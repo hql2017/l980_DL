@@ -54,7 +54,7 @@ void MX_DAC1_Init(void)
   sConfig.DAC_DMADoubleDataMode = DISABLE;
   sConfig.DAC_SignedFormat = DISABLE;
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_SOFTWARE;
   sConfig.DAC_Trigger2 = DAC_TRIGGER_NONE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_EXTERNAL;
@@ -124,5 +124,43 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* dacHandle)
 }
 
 /* USER CODE BEGIN 1 */
-
+/************************************************************************//**
+  * @brief DAC_输出
+  * @param 
+  * @note  
+  * @retval  
+  *****************************************************************************/
+ void app_dac_out(unsigned int  outVoltageMv)
+ { 
+   if(outVoltageMv==0)
+   {		//stop	
+     if(HAL_DAC_Stop(&hdac1, DAC_CHANNEL_1) != HAL_OK)
+     {
+       /* Start DAC converters */
+       Error_Handler();
+     } 
+   }
+   else 
+   {
+    unsigned int  dac_Value;
+     if(outVoltageMv>1500) dac_Value=2048;//MAX 1.5V
+     else 
+     {
+      //dac_Value=outVoltage*4096/3000;
+      
+      dac_Value=outVoltageMv*512/375;
+     }
+       /* 将初始 DAC 值设置为转换值。 */
+     if(HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_Value) != HAL_OK)
+     {
+       /* DAC value set error */
+       Error_Handler();
+     }		
+     if(HAL_DAC_Start(&hdac1, DAC_CHANNEL_1) != HAL_OK)
+     {
+       /* Start DAC converters */
+       Error_Handler();
+     } 
+   }
+ }
 /* USER CODE END 1 */

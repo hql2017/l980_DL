@@ -11,6 +11,9 @@
 #include "usart.h"
 #include "tim.h"
 
+
+#include "string.h"
+#include "stdio.h"
 #ifndef TMC_USART_USED
 /******************LSB**************/
 #define TMC_USART_USED 
@@ -66,12 +69,15 @@ typedef struct {
   unsigned char dir;  
   unsigned char errStatus;
   unsigned char rdb_speed;
-  unsigned int  pulse_count;//
+  unsigned int  pulse_count;//单步计数
 }TMC_INFO;
 
 static TMC_INFO tmc2226_rdb_info;
 static unsigned char tmc_usart_config[8]={0};
 static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,50ml/Min ~200ml/min
+
+
+static void app_tmc2226_speed_set(unsigned char spdLevel);
 
 //extern UART_HandleTypeDef huart10;;
 //usart change speed
@@ -115,13 +121,13 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
   void tmc2226_en ( unsigned  char en )
   {
     tmc2226_rdb_info.run=en;
-    if(en!=0)  
+    if(en==0)  
     {     
-      HAL_GPIO_WritePin ( TMC2226_CTR_EN_OUT_GPIO_Port , TMC2226_CTR_EN_OUT_Pin , GPIO_PIN_RESET );    
+      HAL_GPIO_WritePin ( TMC2226_CTR_EN_OUT_GPIO_Port , TMC2226_CTR_EN_OUT_Pin , GPIO_PIN_SET );    
     } 
     else 
     {
-      HAL_GPIO_WritePin ( TMC2226_CTR_EN_OUT_GPIO_Port , TMC2226_CTR_EN_OUT_Pin , GPIO_PIN_SET );   
+      HAL_GPIO_WritePin ( TMC2226_CTR_EN_OUT_GPIO_Port , TMC2226_CTR_EN_OUT_Pin , GPIO_PIN_RESET );   
     }  
   }
  /**
@@ -132,13 +138,12 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
   */
   void tmc2226_param_default ( void )
   {
-      tmc2226_rdb_info.run = 0;
-      tmc2226_rdb_info.dir = 0;
-      tmc2226_rdb_info.errStatus = 0;
-      tmc2226_rdb_info.rdb_speed = 0;
-      if(tmc2226_rdb_info.rdb_speed < 5) tmc2226_rdb_info.rdb_speed = 5;
-      if(tmc2226_rdb_info.rdb_speed >35) tmc2226_rdb_info.rdb_speed = 35;
-
+    tmc2226_rdb_info.run = 0;
+    tmc2226_rdb_info.dir = 0;
+    tmc2226_rdb_info.errStatus = 0;
+    tmc2226_rdb_info.rdb_speed = 0;
+    if(tmc2226_rdb_info.rdb_speed < 5) tmc2226_rdb_info.rdb_speed = 5;
+    if(tmc2226_rdb_info.rdb_speed >35) tmc2226_rdb_info.rdb_speed = 35;
   }
 /**
   * @brief tmc2226_dir
@@ -148,7 +153,7 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
   */
  void tmc2226_dir(unsigned  char dir)
  {
-    if(dir==TMC_WATER_OUT_DIR_VALUE)  HAL_GPIO_WritePin(TMC2226_DIR_OUT_GPIO_Port, TMC2226_DIR_OUT_Pin, GPIO_PIN_RESET);
+    if(dir==0)  HAL_GPIO_WritePin(TMC2226_DIR_OUT_GPIO_Port, TMC2226_DIR_OUT_Pin, GPIO_PIN_RESET);
     else HAL_GPIO_WritePin(TMC2226_DIR_OUT_GPIO_Port, TMC2226_DIR_OUT_Pin, GPIO_PIN_SET);
  } 
 /**
@@ -158,14 +163,14 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
   * @retval None
   */
  void tmc2226_init(void)
- {
-    tmc2226_param_default(); 
+ {   
+    tmc2226_param_default();     
     tmc2226_stop();     
  }
  /**
   * @brief tmc2226_step_pwm
   * @param  void
-  * @note   PWM控制step
+  * @note   PWM控制step   1~20K
   * @retval None
   */
  void tmc2226_step_pwm_set(unsigned  int speed)
@@ -174,24 +179,36 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
   {    
 		unsigned int timeUs;
 		unsigned short int period;
-		//check freq,timer3 1M clock freq		
-    //period=10000000/100000;
-		period=100;
-		__HAL_TIM_SetAutoreload(&htim16,period-1);//freq =10k
+		//check freq,timer8 1M clock freq		
+    //period=10000000/50000;
+    if(speed==1)//low speed  2k
+    {
+      period = 500;
+    }
+    else if(speed==2)//mid speed 4k
+    {
+      period = 250;
+    }
+    else //if(speed==3)//high speed  //10k
+    {
+      period=100;
+    } 
+    period=250;
+		__HAL_TIM_SetAutoreload(&htim8,period-1);//freq =10k
 		//duty 1%  100%; 0% close	
 		timeUs=period /2;	//duty 50%
-		__HAL_TIM_SetCompare(&htim3,TIM_CHANNEL_1,timeUs-1);
-		HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+		__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_1,timeUs-1);	
   }
   else
   {
-    HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);
+    HAL_TIM_PWM_Stop(&htim8,TIM_CHANNEL_1);
+    HAL_TIM_Base_Stop_IT(&htim4);
   }	
  }
 /**
   * @brief app_steps_pulse
   * @param  void
-  * @note   1 circle: 1 index  pulse -> 4 steps
+  * @note   1 circle: 1 index  pulse -> 200 steps
   * @retval None
   */
 void app_steps_pulse(unsigned int steps)
@@ -208,34 +225,78 @@ void app_steps_pulse(unsigned int steps)
       tmc2226_rdb_info.pulse_count++;      
       if(steps<CONTINUOUS_STEPS_COUNT)
       {
-        if(tmc2226_rdb_info.pulse_count*4>steps)
+        if(tmc2226_rdb_info.pulse_count>steps)
         {          
-         //tmc2226_stop(); 
+          tmc2226_stop(); 
         }
       }        
     }  
   }     
  }
-
+ void HAL_TIM_Trigger_Callback(TIM_HandleTypeDef *htim)
+ {
+  if(htim->Instance==TIM3)
+  {
+    DEBUG_PRINTF("encoder_trigger\r\n");
+  }
+ }
  /**
   * @brief tmc2226_start
-  * @param  unsigned char dir,unsigned short int speed
+  * @param  unsigned char dir,unsigned short int speed,unsigned  int steps
   * @note   启动步进电机 
-  *   
+  *  10mm ->10 circle-> 1000 ctr pulse=4000 micro steps -> 40000 encoder (phseA and paseB)-> only phase A pulse 10000
+  *  1mm ->1 circle-> 100 ctr pulse = 400 micro steps -> 4000 encoder (phseA and paseB)-> only phase A pulse 1000
+  *  0.01mm ->3.6° -> 1 ctr pulse = 4 micro steps -> 40 encoder (phseA and paseB) -> only phase A pulse  10
+  *  0.001mm ->0.36°-> 0.1 ctr pulse = 0.4 micro steps -> 4 encoder (phseA and paseB) -> only phase A pulse  1
+  * 
+  *   MOTOR_DIR_FORWARD:encoder count up;
+  *   MOTOR_DIR_REVERSE:encoder count down;
   * @retval None
   */
-void tmc2226_start(unsigned char dir,unsigned short int spdLevel)
+void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int steps)
 {
-	unsigned short int timeUs;	
 	//check status ,error status	
-	if(spdLevel==0)
+	if(spdLevel==0||steps<2)
 	{
 		tmc2226_stop();
 	}
 	else 
 	{      
-		tmc2226_dir(dir); 
-		tmc2226_en(1);    
+		tmc2226_dir(dir);    
+    app_tmc2226_speed_set(spdLevel);
+    tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);
+    if(steps < MAX_TRIP_STEPS_COUNT+1) // until run
+    {         
+      if(dir==MOTOR_DIR_REVERSE) //downcounter
+      {   
+        __HAL_TIM_SET_COUNTER(&htim2,0); 
+        __HAL_TIM_SetAutoreload(&htim2,10); 
+        HAL_TIM_Base_Start_IT(&htim2);//encoder   Z         
+        __HAL_TIM_SET_COUNTER(&htim3,ENCODER_ONE_CIRCLE_COUNT-1);// encoder AB  count        
+        HAL_TIM_Encoder_Start_IT(&htim3,TIM_CHANNEL_ALL);
+      }
+      else if(dir==MOTOR_DIR_FORWARD) //upcounter
+      {
+        __HAL_TIM_SET_COUNTER(&htim2,0); 
+        __HAL_TIM_SetAutoreload(&htim2,10); 
+        HAL_TIM_Base_Start_IT(&htim2);//encoder   Z
+        __HAL_TIM_SET_COUNTER(&htim3,ENCODER_ONE_CIRCLE_COUNT-1);         
+        HAL_TIM_Encoder_Start_IT(&htim3,TIM_CHANNEL_ALL);   
+      }  
+      else if (dir==MOTOR_DIR_ZERO)//downcounter
+      {
+        __HAL_TIM_SET_COUNTER(&htim2,0); 
+        __HAL_TIM_SetAutoreload(&htim2,34); 
+        HAL_TIM_Base_Start_IT(&htim2);//encoder   Z
+        __HAL_TIM_SET_COUNTER(&htim3,ENCODER_ONE_CIRCLE_COUNT-1);        
+        HAL_TIM_Encoder_Start_IT(&htim3,TIM_CHANNEL_ALL); 
+      }
+      __HAL_TIM_SET_COUNTER(&htim4,0); 
+      __HAL_TIM_SetAutoreload(&htim4,(steps+1));
+      HAL_TIM_Base_Start_IT(&htim4);             
+    }    
+    HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);    
+    tmc2226_en(1); 
 	}
 }
   /**
@@ -244,12 +305,10 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel)
   * @note   停止步进电机
   * @retval 本次运行步数
   */
-unsigned int  tmc2226_stop(void)
-{
-	unsigned int retSteps;
-	HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_1);    
-	tmc2226_en(0);     
-	return retSteps; 
+void  tmc2226_stop(void)
+{	
+  HAL_TIM_PWM_Stop(&htim8,TIM_CHANNEL_1); 
+  tmc2226_en(0);  
 } 
  /************************************************************************//**
   * @brief 设置步进速度等级
@@ -257,7 +316,7 @@ unsigned int  tmc2226_stop(void)
   * @note   0关闭  3最快   
   * @retval 无
   *****************************************************************************/
- void app_tmc2226_speed_set(unsigned char spdLevel)
+ static void app_tmc2226_speed_set(unsigned char spdLevel)
  {
     if(spdLevel==0)
     {
@@ -267,7 +326,7 @@ unsigned int  tmc2226_stop(void)
     {      
       if(spdLevel==1)
       {	        
-        tmc2226_rdb_info.rdb_speed = 3;
+        tmc2226_rdb_info.rdb_speed = 1;
       }
       else if(spdLevel==2)
       { 

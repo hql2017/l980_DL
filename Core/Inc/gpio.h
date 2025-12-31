@@ -39,7 +39,9 @@ extern "C" {
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+void app_load_power_switch( FunctionalState flag);
+void app_tec_run_mode( unsigned char runMode);
+void app_mcu_sys_led(  FunctionalState flag);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

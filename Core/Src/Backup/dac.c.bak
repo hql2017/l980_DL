@@ -54,7 +54,7 @@ void MX_DAC1_Init(void)
   sConfig.DAC_DMADoubleDataMode = DISABLE;
   sConfig.DAC_SignedFormat = DISABLE;
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_SOFTWARE;
   sConfig.DAC_Trigger2 = DAC_TRIGGER_NONE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_EXTERNAL;
@@ -91,7 +91,7 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef* dacHandle)
     HAL_GPIO_Init(DAC1_OUT1_LASER980_PWR4V2_GPIO_Port, &GPIO_InitStruct);
 
     /* DAC1 interrupt Init */
-    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 15, 0);
     HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
   /* USER CODE BEGIN DAC1_MspInit 1 */
 
@@ -116,14 +116,7 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* dacHandle)
     HAL_GPIO_DeInit(DAC1_OUT1_LASER980_PWR4V2_GPIO_Port, DAC1_OUT1_LASER980_PWR4V2_Pin);
 
     /* DAC1 interrupt Deinit */
-  /* USER CODE BEGIN DAC1:TIM6_DAC_IRQn disable */
-    /**
-    * Uncomment the line below to disable the "TIM6_DAC_IRQn" interrupt
-    * Be aware, disabling shared interrupt may affect other IPs
-    */
-    /* HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn); */
-  /* USER CODE END DAC1:TIM6_DAC_IRQn disable */
-
+    HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn);
   /* USER CODE BEGIN DAC1_MspDeInit 1 */
 
   /* USER CODE END DAC1_MspDeInit 1 */
@@ -131,5 +124,43 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* dacHandle)
 }
 
 /* USER CODE BEGIN 1 */
-
+/************************************************************************//**
+  * @brief DAC_输出
+  * @param 
+  * @note  
+  * @retval  
+  *****************************************************************************/
+ void app_dac_out(unsigned int  outVoltageMv)
+ { 
+   if(outVoltageMv==0)
+   {		//stop	
+     if(HAL_DAC_Stop(&hdac1, DAC_CHANNEL_1) != HAL_OK)
+     {
+       /* Start DAC converters */
+       Error_Handler();
+     } 
+   }
+   else 
+   {
+    unsigned int  dac_Value;
+     if(outVoltageMv>1500) dac_Value=2048;//MAX 1.5V
+     else 
+     {
+      //dac_Value=outVoltage*4096/3000;
+      
+      dac_Value=outVoltageMv*512/375;
+     }
+       /* 将初始 DAC 值设置为转换值。 */
+     if(HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_Value) != HAL_OK)
+     {
+       /* DAC value set error */
+       Error_Handler();
+     }		
+     if(HAL_DAC_Start(&hdac1, DAC_CHANNEL_1) != HAL_OK)
+     {
+       /* Start DAC converters */
+       Error_Handler();
+     } 
+   }
+ }
 /* USER CODE END 1 */

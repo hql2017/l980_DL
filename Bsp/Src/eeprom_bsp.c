@@ -231,9 +231,9 @@ uint8_t IIC_Read_OneByte(uint8_t ack)
   */
  void EEPROM_M24C32_init(void)
 {  
-	app_I2C_start(&hi2c1);			//start	
-	unsigned char status=EEPROM_M24C32_Test();
-	DEBUG_PRINTF("24C32 init ok syncFlag=%x",status);	
+	app_I2C_start(&hi2c1);//start	
+	unsigned char status = EEPROM_M24C32_Test();
+	//DEBUG_PRINTF("24C32 init ok flag=%x",status);	
 }
 /**
   * @brief EEPROM_M24C32_I2C_Read

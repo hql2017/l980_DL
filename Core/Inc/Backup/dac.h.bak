@@ -35,7 +35,7 @@ extern "C" {
 extern DAC_HandleTypeDef hdac1;
 
 /* USER CODE BEGIN Private defines */
-
+void app_dac_out(unsigned int  outVoltageMv);
 /* USER CODE END Private defines */
 
 void MX_DAC1_Init(void);

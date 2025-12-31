@@ -55,7 +55,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, LOAD_PWR_ON_OUT_Pin|LASER980_PWR_EN_OUT_Pin|TEC_DRV8701_PHASE_CTR_OUT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, TMC2226_CTR_EN_OUT_Pin|TMC2226_DIR_OUT_Pin|EEROM_WC_OUT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, TMC2226_CTR_EN_OUT_Pin|TMC2226_DIR_OUT_Pin|EEROM_WC_OUT_Pin|MCU_LED_CTR_OUT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port, TEC_DRV8701_SLEEP_OUT_Pin, GPIO_PIN_RESET);
@@ -66,6 +66,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin */
+  GPIO_InitStruct.Pin = MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LASER980_ERROR_OVERLOAD_IN_Pin */
   GPIO_InitStruct.Pin = LASER980_ERROR_OVERLOAD_IN_Pin;
@@ -79,8 +85,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TMC2226_CTR_EN_OUT_Pin TMC2226_DIR_OUT_Pin EEROM_WC_OUT_Pin */
-  GPIO_InitStruct.Pin = TMC2226_CTR_EN_OUT_Pin|TMC2226_DIR_OUT_Pin|EEROM_WC_OUT_Pin;
+  /*Configure GPIO pins : TMC2226_CTR_EN_OUT_Pin TMC2226_DIR_OUT_Pin EEROM_WC_OUT_Pin MCU_LED_CTR_OUT_Pin */
+  GPIO_InitStruct.Pin = TMC2226_CTR_EN_OUT_Pin|TMC2226_DIR_OUT_Pin|EEROM_WC_OUT_Pin|MCU_LED_CTR_OUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -99,14 +105,56 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(TEC_DRV8701_SLEEP_OUT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ECODE_Z_IN_Pin */
-  GPIO_InitStruct.Pin = ECODE_Z_IN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(ECODE_Z_IN_GPIO_Port, &GPIO_InitStruct);
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
 /* USER CODE BEGIN 2 */
+ /************************************************************************//**
+  * @brief 负载电源开关
+  * @param  flag-使能信号
+  * @note   高电平有效
+  * @retval None
+  ****************************************************************************/
+ void app_load_power_switch( FunctionalState flag)
+ {   
+   if(flag==DISABLE)  HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_SET);  
+ }
+  /************************************************************************//**
+  * @brief tec开关
+  * @param  flag-使能信号
+  * @note   0，standby ；1 work
+  * @retval None
+  ****************************************************************************/
+ void app_tec_switch( FunctionalState flag)
+ {   
+   if(flag==DISABLE)  HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port,TEC_DRV8701_SLEEP_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port,TEC_DRV8701_SLEEP_OUT_Pin,GPIO_PIN_SET);  
+ }
 
+  /************************************************************************//**
+  * @brief tec运行模式
+  * @param  flag-使能信号
+  * @note   0，cool ；1 hot
+  * @retval None
+  ****************************************************************************/
+ void app_tec_run_mode( unsigned char runMode)
+ {   
+   if(runMode==0)  HAL_GPIO_WritePin(TEC_DRV8701_PHASE_CTR_OUT_GPIO_Port,TEC_DRV8701_PHASE_CTR_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(TEC_DRV8701_PHASE_CTR_OUT_GPIO_Port,TEC_DRV8701_PHASE_CTR_OUT_Pin,GPIO_PIN_SET);  
+ }
+   /************************************************************************//**
+  * @brief mcu_sysLED运行模式
+  * @param  flag-使能信号
+  * @note   0，cool ；1 hot
+  * @retval None
+  ****************************************************************************/
+ void app_mcu_sys_led(  FunctionalState flag)
+ {   
+   if(flag==0)  HAL_GPIO_WritePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin,GPIO_PIN_SET);  
+ }
 /* USER CODE END 2 */

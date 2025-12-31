@@ -30,7 +30,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "common_function.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,8 +110,19 @@ int main(void)
   MX_TIM17_Init();
   MX_TIM20_Init();
   MX_USART3_UART_Init();
+  MX_TIM4_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
+  DWT_Init(); 
+  char verBuff[19]={0};
+  memcpy(verBuff,__TIME__,8);
+  memcpy(&verBuff[8],__DATE__,11);
+  if(verBuff[12]<'1') verBuff[12]='0';
+  #ifdef DEBUG_MSG_UART   
+  DEBUG_PRINTF("hsm_dl_V0.0.%c%c%c%c%c%c%c%c%c%c%c%c --DATE=%s\r\n",verBuff[0],verBuff[1],verBuff[3],verBuff[4],verBuff[6],verBuff[7],verBuff[12],verBuff[13],verBuff[15],verBuff[16],verBuff[17],verBuff[18],__DATE__);
+  #else
+  printf("hsm_dl_V0.0.%c%c%c%c%c%c%c%c%c%c%c%c --DATE=%s\r\n",verBuff[0],verBuff[1],verBuff[3],verBuff[4],verBuff[6],verBuff[7],verBuff[12],verBuff[13],verBuff[15],verBuff[16],verBuff[17],verBuff[18],__DATE__);
+  #endif
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -182,6 +194,7 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+#include "tmc2226_step_bsp.h"
 /* USER CODE END 4 */
 
 /**
@@ -201,7 +214,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM4) {   
+    tmc2226_stop();
+    DEBUG_PRINTF("motor stop steps\r\n "); 
+  }  
+  if (htim->Instance == TIM2) {    
+    tmc2226_stop();    
+    DEBUG_PRINTF("arrive zero position\r\n ");
+  }
   /* USER CODE END Callback 1 */
 }
 

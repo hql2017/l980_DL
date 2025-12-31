@@ -8,6 +8,6 @@
 #define TEC_CONTROL_BSP_H_
  void tmc_init(void);
   void tec_pwm_set(unsigned short int outVoltage);
-
+  void tec_stop(void);
 #endif /* TEC_CONTROL_BSP_H_ */
 
