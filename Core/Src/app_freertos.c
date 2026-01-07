@@ -143,29 +143,39 @@ void StartDefaultTask(void *argument)
   for(;;)
   {    
     local_system++;    
-    if(local_system%10==0)
-    {
+    local_system%=20;
 
       if(testflag==0) //zero
       {
         if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
         {
-          DEBUG_PRINTF("motor find zero\r\n ");
-          testflag=1;
-          tmc2226_start(MOTOR_DIR_ZERO,1,MAX_TRIP_STEPS_COUNT);          
+          DEBUG_PRINTF("find zero\r\n ");                     
+          app_tmc_um_start(MOTOR_DIR_ZERO,MAX_TRIP_STEPS_COUNT,3);
         }  
-        else    testflag=2;  
-      }
-      else if(testflag==1) //zero
-      {
-        if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_SET)
+        else   
         {
-          DEBUG_PRINTF(" find zero\r\n ");
-          testflag=2;
+          testflag=1;
+          app_tmc_um_start(MOTOR_DIR_FORWARD,12000,3);
+        }
+      }
+      else 
+      {
+        if(local_system==10)
+        {
+          if((htim2.Instance->CNT)<40000)
+          {
+            DEBUG_PRINTF(" forward 12mm\r\n ");
+            app_tmc_um_start(MOTOR_DIR_FORWARD,12000,3);
+          }
+          else
+          {
+            DEBUG_PRINTF(" rever  8mm\r\n ");
+            app_tmc_um_start(MOTOR_DIR_REVERSE,8000,3);
+          }
         }
       }      
-    }   
-    DEBUG_PRINTF("DIR=%d MOTOR STEPS=%d Ecode=%d zero=%d index=%d\r\n",__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3),htim4.Instance->CNT,htim3.Instance->CNT,HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin),htim2.Instance->CNT);
+       
+    DEBUG_PRINTF("DIR=%d MOTOR STEPS=%d Ecode=%d distanceUm=%d\r\n",__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3),htim4.Instance->CNT,htim3.Instance->CNT,(htim2.Instance->CNT)>>2);
     osDelay(1000);   
   }
   /* USER CODE END StartDefaultTask */
@@ -198,10 +208,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 { 
   if(GPIO_Pin==MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)
   {
-    __HAL_TIM_SET_COUNTER(&htim2,0);
-    __HAL_TIM_SetAutoreload(&htim2,1); 
-    HAL_TIM_Base_Start_IT(&htim2);//encoder   Z        
+    DEBUG_PRINTF("HR zero \r\n");      
   }   
+  if(GPIO_Pin==ECODER_Z_EXT2I_IN_Pin)
+  {
+    if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3))//down
+    {
+      if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_SET)
+      {
+        tmc2226_stop(); 
+        DEBUG_PRINTF("zero encode=%d index=%d\r\n",htim2.Instance->CNT,htim3.Instance->CNT);      
+        __HAL_TIM_SET_COUNTER(&htim2,0);
+        __HAL_TIM_SET_COUNTER(&htim3,0);
+      }
+      else __HAL_TIM_SET_COUNTER(&htim3,16);
+    }
+  }
 }
 /* USER CODE END Application */
 

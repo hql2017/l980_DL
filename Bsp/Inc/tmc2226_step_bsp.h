@@ -22,7 +22,7 @@
 
 void tmc2226_init(void);
 void app_steps_pulse(unsigned int steps);
-void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int steps);
+void app_tmc_um_start(unsigned char dir, unsigned  int distanceUm,unsigned char speed);
 extern void tmc2226_stop(void);
 void tmc2226_en ( unsigned  char en );
 void tmc2226_step_pwm_set(unsigned  int speed);

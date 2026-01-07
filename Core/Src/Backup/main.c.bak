@@ -217,18 +217,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM4) {   
     tmc2226_stop();
     DEBUG_PRINTF("motor stop steps\r\n "); 
-  }
-  if(htim->Instance==TIM3)
-  {
-    if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3)==1)//MOTOR_DIR_REVERSE: downcounter
-    {
-      __HAL_TIM_SET_COUNTER(&htim3,65535);      
-    }    
-    
-  }
+  }  
   if (htim->Instance == TIM2) {    
     tmc2226_stop();    
-    DEBUG_PRINTF("arrive  zero position\r\n ");
+    DEBUG_PRINTF("arrive zero position\r\n ");
   }
   /* USER CODE END Callback 1 */
 }
