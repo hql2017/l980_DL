@@ -111,7 +111,6 @@ int main(void)
   MX_TIM20_Init();
   MX_USART3_UART_Init();
   MX_TIM4_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   DWT_Init(); 
   char verBuff[19]={0};
@@ -216,11 +215,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM4) {   
     tmc2226_stop();
-    DEBUG_PRINTF("motor stop steps\r\n "); 
+    DEBUG_PRINTF("motor steps overflow\r\n "); 
   }  
-  if (htim->Instance == TIM2) {    
-    tmc2226_stop();    
-    DEBUG_PRINTF("arrive zero position\r\n ");
+  if (htim->Instance == TIM3) {            
+    DEBUG_PRINTF("distance overflow\r\n ");
   }
   /* USER CODE END Callback 1 */
 }

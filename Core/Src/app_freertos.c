@@ -145,7 +145,9 @@ void StartDefaultTask(void *argument)
     local_system++;    
     local_system%=20;
 
-      if(testflag==0) //zero
+    if(testflag==0) //zero
+    {
+      if(local_system==1)
       {
         if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
         {
@@ -158,24 +160,25 @@ void StartDefaultTask(void *argument)
           app_tmc_um_start(MOTOR_DIR_FORWARD,12000,3);
         }
       }
-      else 
+    }
+    else 
+    {
+      if(local_system==10)
       {
-        if(local_system==10)
+        if((htim3.Instance->CNT)<12000)
         {
-          if((htim2.Instance->CNT)<40000)
-          {
-            DEBUG_PRINTF(" forward 12mm\r\n ");
-            app_tmc_um_start(MOTOR_DIR_FORWARD,12000,3);
-          }
-          else
-          {
-            DEBUG_PRINTF(" rever  8mm\r\n ");
-            app_tmc_um_start(MOTOR_DIR_REVERSE,8000,3);
-          }
+          DEBUG_PRINTF(" forward 12mm\r\n ");
+          app_tmc_um_start(MOTOR_DIR_FORWARD,15000,3);
         }
-      }      
-       
-    DEBUG_PRINTF("DIR=%d MOTOR STEPS=%d Ecode=%d distanceUm=%d\r\n",__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3),htim4.Instance->CNT,htim3.Instance->CNT,(htim2.Instance->CNT)>>2);
+        else
+        {
+        
+          DEBUG_PRINTF(" rever  8mm\r\n ");
+          app_tmc_um_start(MOTOR_DIR_REVERSE,5000,3);
+        }
+      }
+    }    
+    DEBUG_PRINTF("MOTOR:DIR=%d STEPS=%d distanceUm=%d\r\n",__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3),htim4.Instance->CNT,(htim3.Instance->CNT+1)>>1);
     osDelay(1000);   
   }
   /* USER CODE END StartDefaultTask */
@@ -212,16 +215,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }   
   if(GPIO_Pin==ECODER_Z_EXT2I_IN_Pin)
   {
+    
     if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3))//down
     {
       if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_SET)
       {
         tmc2226_stop(); 
-        DEBUG_PRINTF("zero encode=%d index=%d\r\n",htim2.Instance->CNT,htim3.Instance->CNT);      
-        __HAL_TIM_SET_COUNTER(&htim2,0);
+        DEBUG_PRINTF("index zero encode=%d \r\n",htim3.Instance->CNT);  
         __HAL_TIM_SET_COUNTER(&htim3,0);
-      }
-      else __HAL_TIM_SET_COUNTER(&htim3,16);
+      }      
     }
   }
 }

@@ -11,11 +11,11 @@
 #define  MOTOR_ENCODER_USED 
 #endif   
 
-#define MAX_TRIP_STEPS_COUNT    3500//35mm
+#define MAX_TRIP_STEPS_COUNT    3200//3500//35mm
 #define CONTINUOUS_STEPS_COUNT  80000// 0xFFFFFFFF //until
 #define ONE_CIRCLE_CTR_STEPS_COUNT    100//
-#define ENCODER_ONE_CIRCLE_COUNT      4000//4 multiple:
-#define ENCODER_MAX_COUNT      ENCODER_ONE_CIRCLE_COUNT*35//       4000*35//35mm
+#define ENCODER_ONE_CIRCLE_COUNT      2000//2 multiple:
+#define ENCODER_MAX_COUNT      ENCODER_ONE_CIRCLE_COUNT*32//       4000*35//35mm
 #define  MOTOR_DIR_FORWARD      0
 #define  MOTOR_DIR_REVERSE      1
 #define  MOTOR_DIR_ZERO         2

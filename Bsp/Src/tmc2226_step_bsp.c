@@ -263,13 +263,14 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     {      
       __HAL_TIM_SET_COUNTER(&htim4,0); 
       if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MAX_TRIP_STEPS_COUNT);         
-      else __HAL_TIM_SetAutoreload(&htim4,steps);      
+      else __HAL_TIM_SetAutoreload(&htim4,steps+2);   //0.005mm   
       HAL_TIM_Base_Start_IT(&htim4);             
     }
-    else HAL_TIM_Base_Stop_IT(&htim4); //until 
-    HAL_TIM_Encoder_Start(&htim3,TIM_CHANNEL_ALL);     
-    HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);    
+    else HAL_TIM_Base_Stop_IT(&htim4); //until
+    HAL_TIM_Encoder_Start(&htim3,TIM_CHANNEL_ALL);         
+    HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
     tmc2226_en(1); 
+    
 	}
 }
   /**
@@ -281,7 +282,8 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 void  tmc2226_stop(void)
 {  	
   HAL_TIM_PWM_Stop(&htim8,TIM_CHANNEL_1);   
-  tmc2226_en(0);  
+  tmc2226_en(0);
+  __HAL_TIM_SET_COUNTER(&htim4,0);  
   HAL_TIM_Encoder_Stop(&htim3,TIM_CHANNEL_ALL); 
 } 
  /************************************************************************//**
@@ -314,16 +316,16 @@ static void app_tmc2226_speed_set(unsigned char spdLevel)
 } 
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if(htim->Instance==TIM2)
+  if(htim->Instance==TIM3)
   {
     tmc2226_stop(); 
-    if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim2))//DOWN
+    if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3))//DOWN
     {    
-     DEBUG_PRINTF("reverse target OC=%d tim3=%d\r\n",htim2.Instance->CNT,htim3.Instance->CNT);
+     DEBUG_PRINTF("reverse OC position=%d \r\n",htim3.Instance->CNT);
     }
     else
     {
-      DEBUG_PRINTF("arrive OC=%d tim3=%d\r\n",htim2.Instance->CNT,htim3.Instance->CNT);
+      DEBUG_PRINTF("arrive OC=%d \r\n",htim3.Instance->CNT);
     }
   }
 }
@@ -335,39 +337,28 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
   ****************************************************************************/
 static void encoder_dir_count_config(unsigned char dir,unsigned  int encoderCount)
 {
-  unsigned  int history_code=__HAL_TIM_GET_COUNTER(&htim2);
-    if(dir==MOTOR_DIR_FORWARD)//encoder up
+  unsigned  int target_code=__HAL_TIM_GET_COUNTER(&htim3); 
+  if(dir==MOTOR_DIR_FORWARD)//encoder up
+  {   
+    if(encoderCount>ENCODER_MAX_COUNT)//32mm
     {
-      htim2.Init.CounterMode = TIM_COUNTERMODE_UP;       
-      if(HAL_TIM_Base_Init(&htim2)!= HAL_OK)
-      {
-        Error_Handler();
-      }  
-      encoderCount%=(ENCODER_MAX_COUNT+1); 
-      __HAL_TIM_SET_COUNTER(&htim2,history_code);     
-      __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,encoderCount);
+      target_code=ENCODER_MAX_COUNT;
     }
-    else if(dir==MOTOR_DIR_REVERSE)// encoder DOWN
-    {
-      htim2.Init.CounterMode = TIM_COUNTERMODE_DOWN;
-      if(HAL_TIM_Base_Init(&htim2)!= HAL_OK)
-      {
-        Error_Handler();
-      }       
-      __HAL_TIM_SET_COUNTER(&htim2,history_code+1);
-      __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,encoderCount);
-    }
-    else //if(dir==MOTOR_DIR_ZERO)// cali zero
-    {
-      htim2.Init.CounterMode = TIM_COUNTERMODE_DOWN;
-      if(HAL_TIM_Base_Init(&htim2)!= HAL_OK)
-      {
-        Error_Handler();
-      }   
-      __HAL_TIM_SET_COUNTER(&htim2,ENCODER_MAX_COUNT); 
-      __HAL_TIM_SET_COMPARE(&htim2,TIM_CHANNEL_4,4);
-    }  
-    HAL_TIM_OC_Start_IT(&htim2,TIM_CHANNEL_4); 
+    else target_code=encoderCount;
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,target_code-1);
+    __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
+  }
+  else if(dir==MOTOR_DIR_REVERSE)// encoder DOWN
+  {  
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
+    __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
+  }
+  else //if(dir==MOTOR_DIR_ZERO)// cali zero
+  {      
+    __HAL_TIM_SET_COUNTER(&htim3,ENCODER_MAX_COUNT); 
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
+    __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC3); 
+  }  
 }
 /************************************************************************//**
   * @brief app_tmc_um_start 
@@ -378,14 +369,14 @@ static void encoder_dir_count_config(unsigned char dir,unsigned  int encoderCoun
 void app_tmc_um_start(unsigned char dir, unsigned  int distanceUm,unsigned char speed)
 {  
   unsigned  int steps=0; 
-  encoder_dir_count_config( dir,distanceUm<<2); //distanceUm*4
+  encoder_dir_count_config( dir,distanceUm<<1); //distanceUm*2
   if(dir==MOTOR_DIR_ZERO)
   {
     tmc2226_start(dir,speed,MAX_TRIP_STEPS_COUNT);  
   }
   else
   {
-    unsigned  int history_positionUm = __HAL_TIM_GET_COUNTER(&htim2)>>2;//μm
+    unsigned  int history_positionUm =(__HAL_TIM_GET_COUNTER(&htim3)+1)>>1;//μm
     if(history_positionUm!=distanceUm)
     {
       if(history_positionUm>distanceUm) steps=history_positionUm-distanceUm;

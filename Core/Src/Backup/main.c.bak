@@ -218,9 +218,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     tmc2226_stop();
     DEBUG_PRINTF("motor stop steps\r\n "); 
   }  
-  if (htim->Instance == TIM2) {    
-    tmc2226_stop();    
-    DEBUG_PRINTF("arrive zero position\r\n ");
+  if (htim->Instance == TIM3) {            
+    DEBUG_PRINTF("distance overflow\r\n ");
   }
   /* USER CODE END Callback 1 */
 }
