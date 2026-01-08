@@ -35,12 +35,12 @@
  }
 /**
  * 
-  * @brief tmc_init
+  * @brief tec_init
   * @param  void
   * @note   
   * @retval None
   */
- void tmc_init(void)
+ void tec_init(void)
  {
     tec_en(0);
  } 
@@ -48,15 +48,17 @@
   * @brief tec_pwm_set
   * @param  void
   * @note   outVoltage
+  *         freq:=timer20 1M clock freq
+  *         duty:1~100
   * @retval None
   */
  void tec_pwm_set(unsigned short int outVoltage)
  {
-	 if(outVoltage!=0)
+	if(outVoltage!=0)
   {    
 		unsigned int timeUs;
 		unsigned short int period;
-		//check freq,timer3 1M clock freq		
+				
     //period=10000000/100000;
 		period=100;
 		__HAL_TIM_SetAutoreload(&htim20,period-1);//freq =100k
@@ -65,10 +67,7 @@
 		__HAL_TIM_SetCompare(&htim20,TIM_CHANNEL_3,timeUs-1);
 		//HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);
   }
-  else
-
-
-  
+  else  
   {
     HAL_TIM_PWM_Stop(&htim20,TIM_CHANNEL_3);
   }		 

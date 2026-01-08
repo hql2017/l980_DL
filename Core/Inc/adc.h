@@ -55,6 +55,7 @@ void MX_ADC3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 void app_get_adc_value(unsigned char adChannel,float *vBuff);
+void app_start_multi_channel_adc(void);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

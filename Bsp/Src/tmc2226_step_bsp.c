@@ -165,7 +165,8 @@ static void app_tmc2226_speed_set(unsigned char spdLevel);
  void tmc2226_init(void)
  {   
     tmc2226_param_default();     
-    tmc2226_stop();       
+    tmc2226_stop();   
+    __HAL_TIM_CLEAR_IT(&htim4,TIM_IT_UPDATE);  
  }
  /**
   * @brief tmc2226_step_pwm
@@ -250,7 +251,7 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 {
 	//check status ,error status	
   unsigned   int targetUm=0;
-	if(spdLevel==0||steps<2)
+	if(spdLevel==0||steps==0)
 	{
 		tmc2226_stop();
 	}
@@ -258,12 +259,11 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 	{      
 		tmc2226_dir(dir);    
     app_tmc2226_speed_set(spdLevel);
-    tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);
-    if(steps < MAX_TRIP_STEPS_COUNT+1) // until run
-    {      
-      __HAL_TIM_SET_COUNTER(&htim4,0); 
-      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MAX_TRIP_STEPS_COUNT);         
-      else __HAL_TIM_SetAutoreload(&htim4,steps+2);   //0.005mm   
+    tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);     
+    if(steps < MOTOR_MAX_TRIP_STEPS_COUNT+1) 
+    {  
+      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+__HAL_TIM_GET_COUNTER(&htim4)+1);         
+      else __HAL_TIM_SetAutoreload(&htim4,steps+__HAL_TIM_GET_COUNTER(&htim4)+1);   //0.002mm   
       HAL_TIM_Base_Start_IT(&htim4);             
     }
     else HAL_TIM_Base_Stop_IT(&htim4); //until
@@ -282,9 +282,9 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 void  tmc2226_stop(void)
 {  	
   HAL_TIM_PWM_Stop(&htim8,TIM_CHANNEL_1);   
-  tmc2226_en(0);
-  __HAL_TIM_SET_COUNTER(&htim4,0);  
+  tmc2226_en(0);  
   HAL_TIM_Encoder_Stop(&htim3,TIM_CHANNEL_ALL); 
+  __HAL_TIM_SetCounter(&htim4,0);
 } 
  /************************************************************************//**
   * @brief 设置步进速度等级
@@ -314,6 +314,12 @@ static void app_tmc2226_speed_set(unsigned char spdLevel)
     }
   }
 } 
+ /************************************************************************//**
+  * @brief  HAL_TIM_OC_DelayElapsedCallback(htim)
+  * @param   
+  * @note    
+  * @retval None
+  ****************************************************************************/
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(htim->Instance==TIM3)
@@ -330,28 +336,30 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
   }
 }
  /************************************************************************//**
-  * @brief  encoder_dir_count_config(unsigned char dir)
+  * @brief  encoder_count_config(unsigned char dir)
   * @param   
   * @note    
   * @retval None
   ****************************************************************************/
-static void encoder_dir_count_config(unsigned char dir,unsigned  int encoderCount)
+static void encoder_count_config(unsigned char dir,unsigned  int encoderCount)
 {
-  unsigned  int target_code=__HAL_TIM_GET_COUNTER(&htim3); 
   if(dir==MOTOR_DIR_FORWARD)//encoder up
-  {   
-    if(encoderCount>ENCODER_MAX_COUNT)//32mm
-    {
-      target_code=ENCODER_MAX_COUNT;
-    }
-    else target_code=encoderCount;
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,target_code-1);
+  {  
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
     __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
   }
   else if(dir==MOTOR_DIR_REVERSE)// encoder DOWN
   {  
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
-    __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
+    if(encoderCount>1)
+    {       
+      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
+      __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
+    }
+    else //zero
+    {
+      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
+      __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC3); 
+    }
   }
   else //if(dir==MOTOR_DIR_ZERO)// cali zero
   {      
@@ -361,30 +369,40 @@ static void encoder_dir_count_config(unsigned char dir,unsigned  int encoderCoun
   }  
 }
 /************************************************************************//**
-  * @brief app_tmc_um_start 
+  * @brief app_motor_slide_position 
   * @param   
-  * @note   distancUm  1μm  -> 1circle 1mm
+  * @note   1 step pulse : 10μm  
+  *         1circle :      1mm
+  *         encoder  multiple 2 : 1μm  2 encoder count
+  *         encoder  multiple 4 : 1μm  4 encoder count
+  *         speed:   3、high；2 、mid： 1、 low。
   * @retval None
   ****************************************************************************/
-void app_tmc_um_start(unsigned char dir, unsigned  int distanceUm,unsigned char speed)
+void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsigned char speed)
 {  
-  unsigned  int steps=0; 
-  encoder_dir_count_config( dir,distanceUm<<1); //distanceUm*2
+  if(distanceUm>MOTOR_MAX_UM)  return;  
+  unsigned  int history_positionUm =(__HAL_TIM_GET_COUNTER(&htim3)+1)>>1; 
+  if(history_positionUm==distanceUm&&dir!=MOTOR_DIR_ZERO)  return; 
+  unsigned  int steps=0;   
   if(dir==MOTOR_DIR_ZERO)
   {
-    tmc2226_start(dir,speed,MAX_TRIP_STEPS_COUNT);  
+    tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_TRIP_STEPS_COUNT);
   }
-  else
+  else 
   {
-    unsigned  int history_positionUm =(__HAL_TIM_GET_COUNTER(&htim3)+1)>>1;//μm
-    if(history_positionUm!=distanceUm)
+    if(history_positionUm>distanceUm)
     {
-      if(history_positionUm>distanceUm) steps=history_positionUm-distanceUm;
-      else steps=distanceUm-history_positionUm;
-      if(steps<10) steps=2;
-      else  steps = (steps/10);//1 step-> 10μm 
-      tmc2226_start(dir,speed,steps);  
-    }  
+      steps=history_positionUm-distanceUm;
+      steps=(steps/10)+1;      
+      encoder_count_config(MOTOR_DIR_REVERSE,distanceUm<<1);
+      tmc2226_start(MOTOR_DIR_REVERSE,speed,steps);
+    } 
+    else 
+    {
+      steps=distanceUm-history_positionUm;
+      steps=(steps/10)+1;
+      encoder_count_config(MOTOR_DIR_FORWARD,distanceUm<<1);
+      tmc2226_start(MOTOR_DIR_FORWARD,speed,steps);
+    }    
   }
- 
 }

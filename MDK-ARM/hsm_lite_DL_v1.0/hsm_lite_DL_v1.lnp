@@ -16,6 +16,7 @@
 "hsm_lite_dl_v1.0\eeprom_bsp.o"
 "hsm_lite_dl_v1.0\tmc2226_step_bsp.o"
 "hsm_lite_dl_v1.0\tec_control_bsp.o"
+"hsm_lite_dl_v1.0\canopen_bsp.o"
 "hsm_lite_dl_v1.0\common_function.o"
 "hsm_lite_dl_v1.0\task_menu.o"
 "hsm_lite_dl_v1.0\stm32g4xx_hal_tim.o"

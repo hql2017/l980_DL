@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc;../Middlewares/CANopen/CANfestival</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -581,6 +581,11 @@
               <FileType>1</FileType>
               <FilePath>..\Bsp\Src\tec_control_bsp.c</FilePath>
             </File>
+            <File>
+              <FileName>CANopen_bsp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Bsp\Src\CANopen_bsp.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -792,6 +797,9 @@
               <FilePath>../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/port.c</FilePath>
             </File>
           </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopen</GroupName>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>
