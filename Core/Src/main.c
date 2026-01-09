@@ -106,12 +106,11 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_TIM3_Init();
   MX_TIM8_Init();
-  MX_TIM16_Init();
-  MX_TIM17_Init();
   MX_TIM20_Init();
   MX_USART3_UART_Init();
   MX_TIM4_Init();
   MX_TIM7_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   DWT_Init(); 
   char verBuff[19]={0};
@@ -195,6 +194,8 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 #include "tmc2226_step_bsp.h"
+#include "tec_control_bsp.h"
+extern void app_tec_ctr_semo(void);
 /* USER CODE END 4 */
 
 /**
@@ -218,6 +219,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     tmc2226_stop();
     DEBUG_PRINTF("steps overflow\r\n "); 
   }  
+  if(htim->Instance == TIM2) {  
+    tec_stop();     
+    app_tec_ctr_semo();
+    DEBUG_PRINTF("tec time out\r\n ");
+  }
   if(htim->Instance == TIM3) {            
     DEBUG_PRINTF("encoder overflow\r\n ");
   }

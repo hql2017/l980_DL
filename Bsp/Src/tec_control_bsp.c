@@ -79,13 +79,16 @@
   * @note   outVoltage
   * @retval None
   */
- void tec_start(unsigned short int outVoltage)
+ void tec_start(unsigned short int outVoltage,unsigned  int runtimeMs)
  {
     if(outVoltage==0) tec_stop();
     else 
     {
       tec_pwm_set(outVoltage);       
       HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);
+
+      __HAL_TIM_SET_AUTORELOAD(&htim2,runtimeMs*10);//htim2 10K
+      HAL_TIM_Base_Start_IT(&htim2);
     }    
  }
    /**
@@ -96,5 +99,6 @@
   */
  void tec_stop(void)
  {
-   HAL_TIM_PWM_Stop(&htim20,TIM_CHANNEL_3);
- }
+  HAL_TIM_PWM_Stop(&htim20,TIM_CHANNEL_3);
+  HAL_TIM_Base_Stop_IT(&htim2);
+ } 

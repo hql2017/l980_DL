@@ -185,7 +185,8 @@ static void app_tmc2226_speed_set(unsigned char spdLevel);
     //period=1000000/50000;
     if(speed==3)//high speed  //10k
     {
-      period = 100;
+      //period = 100;
+      period = 105;
     }
     else if(speed==2)//mid speed 8k
     {
@@ -325,14 +326,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance==TIM3)
   {
     tmc2226_stop(); 
-    if(__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3))//DOWN
-    {    
-     DEBUG_PRINTF("reverse OC position=%d \r\n",htim3.Instance->CNT);
-    }
-    else
-    {
-      DEBUG_PRINTF("arrive OC=%d \r\n",htim3.Instance->CNT);
-    }
+    DEBUG_PRINTF("arrive OC=%d \r\n",htim3.Instance->CNT);
   }
 }
  /************************************************************************//**
@@ -345,26 +339,26 @@ static void encoder_count_config(unsigned char dir,unsigned  int encoderCount)
 {
   if(dir==MOTOR_DIR_FORWARD)//encoder up
   {  
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount);
     __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
   }
   else if(dir==MOTOR_DIR_REVERSE)// encoder DOWN
   {  
-    if(encoderCount>1)
+    if(encoderCount>0)
     {       
-      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount-1);
+      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,encoderCount);
       __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_CC3); 
     }
     else //zero
     {
-      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
+      __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,ENCODER_MAX_COUNT);
       __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC3); 
     }
   }
   else //if(dir==MOTOR_DIR_ZERO)// cali zero
   {      
     __HAL_TIM_SET_COUNTER(&htim3,ENCODER_MAX_COUNT); 
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,1);
     __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC3); 
   }  
 }
@@ -386,7 +380,8 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
   unsigned  int steps=0;   
   if(dir==MOTOR_DIR_ZERO)
   {
-    tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_TRIP_STEPS_COUNT);
+    encoder_count_config(MOTOR_DIR_ZERO,0);
+    tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_UM);
   }
   else 
   {

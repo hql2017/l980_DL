@@ -79,10 +79,15 @@ const osThreadAttr_t myTask03_attributes = {
   .priority = (osPriority_t) osPriorityNormal1,
   .stack_size = 256 * 4
 };
+/* Definitions for tecBinarySem01 */
+osSemaphoreId_t tecBinarySem01Handle;
+const osSemaphoreAttr_t tecBinarySem01_attributes = {
+  .name = "tecBinarySem01"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
+void app_tec_ctr_semo(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -104,6 +109,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of tecBinarySem01 */
+  tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -150,16 +159,33 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   app_load_power_switch( ENABLE);
   app_start_multi_channel_adc();
-  float local_disp;  
+  float local_disp; 
   for(;;)
   { 
     app_get_adc_value(AD1_CH1_IBUS,&local_disp);
-    DEBUG_PRINTF("IBUS=%.1f",local_disp);
+    DEBUG_PRINTF("AD:iBus=%.1fmA",local_disp);
     app_get_adc_value(AD1_CH2_VBUS,&local_disp);
-    DEBUG_PRINTF("VBUS=%.2fV\r\n",local_disp*0.001);
-    DEBUG_PRINTF("MOTOR:dir=%d steps=%d positon=%dμm\r\n",__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim3),htim4.Instance->CNT,(htim3.Instance->CNT+1)>>1);
-    osDelay(2000);   
-  
+    DEBUG_PRINTF(" vBus=%.2fV",local_disp*0.001);
+    app_get_adc_value(AD1_CH3_I_TEC,&local_disp);
+    DEBUG_PRINTF(" i_TEC=%.1f",local_disp); 
+    app_get_adc_value(AD2_CH3_NTC_MOTOR_TEMPRATURE,&local_disp);
+    DEBUG_PRINTF(" motor_T=%.2f℃",local_disp);
+    app_get_adc_value(AD2_CH4_TEC_TEMPRATURE,&local_disp);
+    DEBUG_PRINTF(" tec_T=%.1f℃",local_disp); 
+    app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
+    DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
+    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",(htim3.Instance->CNT)>>1);
+    osDelay(1000);  
+    
+    if(osSemaphoreAcquire(tecBinarySem01Handle,0))
+    {
+      DEBUG_PRINTF("tec start\r\n");
+      tec_start(100,500);//
+    }
+    else
+    {
+      DEBUG_PRINTF("tec is running\r\n");
+    }
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -176,7 +202,7 @@ void motorTask02(void *argument)
   /* USER CODE BEGIN motorTask02 */
   /* Infinite loop */
   tmc2226_init(); 
-   unsigned int local_system=0;
+  unsigned int local_system=0;
   for(;;)
   {
     local_system++;    
@@ -186,14 +212,14 @@ void motorTask02(void *argument)
       if(local_system==2)
       {
         if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
-        {
-          DEBUG_PRINTF("find zero\r\n ");                     
+        {          
+          DEBUG_PRINTF("reverse zero\r\n ");                     
           app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_TRIP_STEPS_COUNT,3);
         }  
         else   
         {
           DEBUG_PRINTF("find zero \r\n "); 
-          __HAL_TIM_SET_COUNTER(&htim3,0);
+          __HAL_TIM_SET_COUNTER(&htim3,1);
           app_motor_slide_position(MOTOR_DIR_FORWARD,5000,3);
         }
       }
@@ -205,7 +231,7 @@ void motorTask02(void *argument)
         if((htim3.Instance->CNT)<12000)
         {
           DEBUG_PRINTF(" forward 14mm\r\n ");
-          app_motor_slide_position(MOTOR_DIR_FORWARD,14000,3);
+          app_motor_slide_position(MOTOR_DIR_FORWARD,14325,3);
         }
         else
         {        
@@ -260,5 +286,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
   }
 }
+ /************************************************************************//**
+  * @brief  relese
+  * @param   
+  * @note    
+  * @retval None
+  ****************************************************************************/
+void app_tec_ctr_semo(void)
+{
+  osSemaphoreRelease(tecBinarySem01Handle);
+}
+
 /* USER CODE END Application */
 

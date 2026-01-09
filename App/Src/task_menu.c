@@ -5,7 +5,8 @@
 #include "cmsis_os2.h"
 
 extern  void StartDefaultTask(void *argument);
-
+extern  void motorTask02(void *argument);
+extern  void CANopenTask03(void *argument);
 
 
 extern  void MX_FREERTOS_Init(void);
