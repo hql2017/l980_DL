@@ -5,8 +5,13 @@
 
 #include "CANopen_bsp.h"
 #include "fdcan.h"
+#include "main.h"
 
 void CANopen_init(void)
 {
    MX_FDCAN1_Init();
 }
+
+
+
+

@@ -136,12 +136,12 @@
             <Capability>1</Capability>
             <DriverSelection>4101</DriverSelection>
           </Flash1>
-          <bUseTDR>1</bUseTDR>
+          <bUseTDR>0</bUseTDR>
           <Flash2>BIN\UL2V8M.DLL</Flash2>
-          <Flash3></Flash3>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
-          <pFcarmGrp></pFcarmGrp>
+          <pFcarmGrp>Application/MDK-ARM</pFcarmGrp>
           <pFcArmRoot></pFcArmRoot>
           <FcArmLst>0</FcArmLst>
         </Utilities>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc;../Middlewares/CANopen/CANfestival</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc;..\Middlewares\CANopenNode;..\Middlewares\CANopenNode\301;..\Middlewares\CANopenNode\CANopenNode_STM32;..\Middlewares\CANopenNode\303;..\Middlewares\CANopenNode\304;..\Middlewares\CANopenNode\305;..\Middlewares\CANopenNode\309;..\Middlewares\CANopenNode\extra;..\Middlewares\CANopenNode\storage;..\Middlewares\CANopenNode\303</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -799,7 +799,114 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Middlewares/CANopen</GroupName>
+          <GroupName>Middlewares/CANopenNode</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_Emergency.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_Emergency.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_fifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_fifo.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_HBconsumer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_HBconsumer.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_NMT_Heartbeat.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_NMT_Heartbeat.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_Node_Guarding.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_Node_Guarding.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_ODinterface.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_ODinterface.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_PDO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_PDO.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_SDOclient.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_SDOclient.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_SDOserver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_SDOserver.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_SYNC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_SYNC.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_TIME.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\CO_TIME.c</FilePath>
+            </File>
+            <File>
+              <FileName>crc16-ccitt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\301\crc16-ccitt.c</FilePath>
+            </File>
+            <File>
+              <FileName>CANopen.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopen.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/STM32</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_app_STM32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_app_STM32.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_driver_STM32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_driver_STM32.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_storageBlank.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_storageBlank.c</FilePath>
+            </File>
+            <File>
+              <FileName>OD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\OD.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_LEDs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\303\CO_LEDs.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_LSSmaster.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\305\CO_LSSmaster.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_LSSslave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\305\CO_LSSslave.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>::CMSIS</GroupName>

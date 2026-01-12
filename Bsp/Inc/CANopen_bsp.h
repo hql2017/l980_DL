@@ -8,7 +8,12 @@
 #ifndef CANOPEN__H_
 #define CANOPEN__H_
 
-#define CANopen_LOCAL_ADDR_MASK   0x7800
+#include "CO_config.h" 
+
+#define  CAN1_NODE_ID   0x08   
+
+
+
 
 #endif /* CANOPEN__H_ */
 

@@ -175,16 +175,16 @@ void StartDefaultTask(void *argument)
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
     DEBUG_PRINTF("POSITON:pos=%dμm\r\n",(htim3.Instance->CNT)>>1);
-    osDelay(1000);  
-    
+    osDelay(1000);      
     if(osSemaphoreAcquire(tecBinarySem01Handle,0))
     {
-      DEBUG_PRINTF("tec start\r\n");
-      tec_start(100,500);//
+      //DEBUG_PRINTF("tec start\r\n");
+      
+      //tec_start(100,500);
     }
     else
     {
-      DEBUG_PRINTF("tec is running\r\n");
+      //DEBUG_PRINTF("tec busy\r\n");
     }
   }
   /* USER CODE END StartDefaultTask */
@@ -231,7 +231,7 @@ void motorTask02(void *argument)
         if((htim3.Instance->CNT)<12000)
         {
           DEBUG_PRINTF(" forward 14mm\r\n ");
-          app_motor_slide_position(MOTOR_DIR_FORWARD,14325,3);
+          app_motor_slide_position(MOTOR_DIR_FORWARD,12000,3);
         }
         else
         {        
