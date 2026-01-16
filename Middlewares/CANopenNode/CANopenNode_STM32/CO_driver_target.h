@@ -42,6 +42,7 @@
 #elif defined(CAN) || defined(CAN1) || defined(CAN2) || defined(CAN3)
 #define CO_STM32_CAN_Driver 1
 #else
+
 #error This STM32 Do not support CAN or FDCAN
 #endif
 
@@ -51,7 +52,7 @@
 #include "CO_driver_custom.h"
 #endif
 
-#ifdef __cplusplus
+#ifdef __cplusplus                                       
 extern "C" {
 #endif
 

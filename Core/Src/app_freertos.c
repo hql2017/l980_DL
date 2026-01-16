@@ -32,11 +32,13 @@
 #include "tim.h"
 #include "dac.h"
 #include "gpio.h"
+#include "fdcan.h"
 #include "tmc2226_step_bsp.h"
 #include "eeprom_bsp.h"
 #include "tec_control_bsp.h"
-
-
+#include "CANopen_bsp.h"
+#include "CO_app_STM32.h"
+#include "OD.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,7 +65,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .priority = (osPriority_t) osPriorityNormal2,
-  .stack_size = 128 * 4
+  .stack_size = 256 * 4
 };
 /* Definitions for myTask02 */
 osThreadId_t myTask02Handle;
@@ -76,8 +78,8 @@ const osThreadAttr_t myTask02_attributes = {
 osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
-  .priority = (osPriority_t) osPriorityNormal1,
-  .stack_size = 256 * 4
+  .priority = (osPriority_t) osPriorityNormal3,
+  .stack_size = 1280 * 4
 };
 /* Definitions for tecBinarySem01 */
 osSemaphoreId_t tecBinarySem01Handle;
@@ -163,15 +165,15 @@ void StartDefaultTask(void *argument)
   for(;;)
   { 
     app_get_adc_value(AD1_CH1_IBUS,&local_disp);
-    DEBUG_PRINTF("AD:iBus=%.1fmA",local_disp);
+    DEBUG_PRINTF("AD:iBus=%.1fmA",local_disp);    
     app_get_adc_value(AD1_CH2_VBUS,&local_disp);
-    DEBUG_PRINTF(" vBus=%.2fV",local_disp*0.001);
+    DEBUG_PRINTF(" vBus=%.2fV",local_disp*0.001);    
     app_get_adc_value(AD1_CH3_I_TEC,&local_disp);
-    DEBUG_PRINTF(" i_TEC=%.1f",local_disp); 
+    DEBUG_PRINTF(" i_TEC=%.1f",local_disp);   
     app_get_adc_value(AD2_CH3_NTC_MOTOR_TEMPRATURE,&local_disp);
-    DEBUG_PRINTF(" motor_T=%.2f℃",local_disp);
+    DEBUG_PRINTF(" motor_T=%.2f℃",local_disp);  
     app_get_adc_value(AD2_CH4_TEC_TEMPRATURE,&local_disp);
-    DEBUG_PRINTF(" tec_T=%.1f℃",local_disp); 
+    DEBUG_PRINTF(" tec_T=%.1f℃",local_disp);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
     DEBUG_PRINTF("POSITON:pos=%dμm\r\n",(htim3.Instance->CNT)>>1);
@@ -256,9 +258,23 @@ void CANopenTask03(void *argument)
 {
   /* USER CODE BEGIN CANopenTask03 */
   /* Infinite loop */
+  CANopen_init(); 
+  unsigned char databuff[8];
   for(;;)
-  {
-    osDelay(10);
+  {  
+    databuff[0] =12; 
+    databuff[1] =53;   
+    databuff[2] =24;  
+    databuff[3] =12;  
+    databuff[4] =5;  
+    databuff[5] =68;  
+    databuff[6] =97;  
+    databuff[7] =13;
+   
+   // canopen_app_process(); 
+  
+   // APP_CAN_SEND_DATA(databuff,8,23);
+    osDelay(50);      
   }
   /* USER CODE END CANopenTask03 */
 }

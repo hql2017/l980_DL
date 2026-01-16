@@ -13,7 +13,7 @@
 #define  CAN1_NODE_ID   0x08   
 
 
-
+void CANopen_init(void);
 
 #endif /* CANOPEN__H_ */
 

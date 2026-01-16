@@ -318,14 +318,13 @@
 #define CO_free(ptr)        free((ptr))
 
 #endif
-
 /* Define macros for allocation */
 #define CO_alloc_break_on_fail(var, num, size)                                                                         \
     {                                                                                                                  \
         var = CO_alloc((num), (size));                                                                                 \
         if ((var) != NULL) {                                                                                           \
             mem += (size) * (num);                                                                                     \
-        } else {                                                                                                       \
+        } else {                                                                                                             \
             break;                                                                                                     \
         }                                                                                                              \
     }
@@ -365,7 +364,7 @@ CO_new(CO_config_t* config, uint32_t* heapMemoryUsed) {
 
         /* CANopen object */
         CO_alloc_break_on_fail(co, 1U, sizeof(*co));
-
+        
 #ifdef CO_MULTIPLE_OD
         co->config = config;
 #endif
@@ -880,6 +879,7 @@ CO_new(CO_config_t* config, uint32_t* heapMemoryUsed) {
     co->SRDOGuard = &COO_SRDOGuard;
     co->SRDO = &COO_SRDO[0];
 #endif
+
 #if ((CO_CONFIG_LSS)&CO_CONFIG_LSS_SLAVE) != 0
     co->LSSslave = &COO_LSSslave;
 #endif
@@ -1316,7 +1316,7 @@ CO_process(CO_t* co, bool_t enableGateway, uint32_t timeDifference_us, uint32_t*
 
     /* CAN module */
     CO_CANmodule_process(co->CANmodule);
-
+  
 #if ((CO_CONFIG_LSS)&CO_CONFIG_LSS_SLAVE)
     if (CO_GET_CNT(LSS_SLV) == 1U) {
         if (CO_LSSslave_process(co->LSSslave)) {

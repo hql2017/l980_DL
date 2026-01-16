@@ -77,7 +77,8 @@ canopen_app_init(CANopenNodeSTM32* _canopenNodeSTM32) {
     /* Allocate memory */
     CO_config_t* config_ptr = NULL;
 #ifdef CO_MULTIPLE_OD
-    /* example usage of CO_MULTIPLE_OD (but still single OD here) */
+    /* example usage of CO_MULTIPLE_OD (but st
+    ill single OD here) */
     CO_config_t co_config = {0};
     OD_INIT_CONFIG(co_config); /* helper macro from OD.h */
     co_config.CNT_LEDS = 1;
@@ -204,17 +205,19 @@ canopen_app_process() {
     /* loop for normal program execution ******************************************/
     /* get time difference since last function call */
     time_current = HAL_GetTick();
-
+   
     if ((time_current - time_old) > 0) { // Make sure more than 1ms elapsed
         /* CANopen process */
+        log_printf("procee=%d old=%d\n",time_current,time_old);
         CO_NMT_reset_cmd_t reset_status;
         uint32_t timeDifference_us = (time_current - time_old) * 1000;
-        time_old = time_current;
+        time_old = time_current;        
         reset_status = CO_process(CO, false, timeDifference_us, NULL);
         canopenNodeSTM32->outStatusLEDRed = CO_LED_RED(CO->LEDs, CO_LED_CANopen);
         canopenNodeSTM32->outStatusLEDGreen = CO_LED_GREEN(CO->LEDs, CO_LED_CANopen);
-
+        
         if (reset_status == CO_RESET_COMM) {
+        
             /* delete objects from memory */
         	HAL_TIM_Base_Stop_IT(canopenNodeSTM32->timerHandle);
             CO_CANsetConfigurationMode((void*)canopenNodeSTM32);
@@ -231,7 +234,7 @@ canopen_app_process() {
 /* Thread function executes in constant intervals, this function can be called from FreeRTOS tasks or Timers ********/
 void
 canopen_app_interrupt(void) {
-    CO_LOCK_OD(CO->CANmodule);
+   CO_LOCK_OD(CO->CANmodule);
     if (!CO->nodeIdUnconfigured && CO->CANmodule->CANnormal) {
         bool_t syncWas = false;
         /* get time difference since last function call */

@@ -111,6 +111,7 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM7_Init();
   MX_TIM2_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   DWT_Init(); 
   char verBuff[19]={0};
@@ -195,6 +196,9 @@ void SystemClock_Config(void)
 
 #include "tmc2226_step_bsp.h"
 #include "tec_control_bsp.h"
+
+#include "CO_app_STM32.h"
+
 extern void app_tec_ctr_semo(void);
 /* USER CODE END 4 */
 
@@ -224,8 +228,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     app_tec_ctr_semo();
     DEBUG_PRINTF("tec time out\r\n ");
   }
-  if(htim->Instance == TIM3) {            
-    DEBUG_PRINTF("encoder overflow\r\n ");
+  if (htim->Instance == TIM17) {
+    canopen_app_interrupt();  
   }
   /* USER CODE END Callback 1 */
 }

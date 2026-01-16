@@ -136,7 +136,7 @@
             <Capability>1</Capability>
             <DriverSelection>4101</DriverSelection>
           </Flash1>
-          <bUseTDR>0</bUseTDR>
+          <bUseTDR>1</bUseTDR>
           <Flash2>BIN\UL2V8M.DLL</Flash2>
           <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc;..\Middlewares\CANopenNode;..\Middlewares\CANopenNode\301;..\Middlewares\CANopenNode\CANopenNode_STM32;..\Middlewares\CANopenNode\303;..\Middlewares\CANopenNode\304;..\Middlewares\CANopenNode\305;..\Middlewares\CANopenNode\309;..\Middlewares\CANopenNode\extra;..\Middlewares\CANopenNode\storage;..\Middlewares\CANopenNode\303</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../Bsp/Inc;../Bsp/Src;../App/Src;../App/Inc;../Middlewares/CANopenNode;../Middlewares/CANopenNode/301;../Middlewares/CANopenNode/CANopenNode_STM32;../Middlewares/CANopenNode/303;../Middlewares/CANopenNode/304;../Middlewares/CANopenNode/305;../Middlewares/CANopenNode/309;../Middlewares/CANopenNode/extra;../Middlewares/CANopenNode/storage</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -799,7 +799,42 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>Middlewares/CANopenNode/STM32</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_app_STM32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_app_STM32.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_driver_STM32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_driver_STM32.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_storageBlank.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_storageBlank.c</FilePath>
+            </File>
+            <File>
+              <FileName>OD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\OD.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>Middlewares/CANopenNode</GroupName>
+          <Files>
+            <File>
+              <FileName>CANopen.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\CANopen.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/301</GroupName>
           <Files>
             <File>
               <FileName>CO_Emergency.c</FileName>
@@ -861,41 +896,36 @@
               <FileType>1</FileType>
               <FilePath>..\Middlewares\CANopenNode\301\crc16-ccitt.c</FilePath>
             </File>
-            <File>
-              <FileName>CANopen.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Middlewares\CANopenNode\CANopen.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
-          <GroupName>Middlewares/CANopenNode/STM32</GroupName>
+          <GroupName>Middlewares/CANopenNode/303</GroupName>
           <Files>
-            <File>
-              <FileName>CO_app_STM32.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_app_STM32.c</FilePath>
-            </File>
-            <File>
-              <FileName>CO_driver_STM32.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_driver_STM32.c</FilePath>
-            </File>
-            <File>
-              <FileName>CO_storageBlank.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\CO_storageBlank.c</FilePath>
-            </File>
-            <File>
-              <FileName>OD.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Middlewares\CANopenNode\CANopenNode_STM32\OD.c</FilePath>
-            </File>
             <File>
               <FileName>CO_LEDs.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Middlewares\CANopenNode\303\CO_LEDs.c</FilePath>
             </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/304</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_GFC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\304\CO_GFC.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_SRDO.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\304\CO_SRDO.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/305</GroupName>
+          <Files>
             <File>
               <FileName>CO_LSSmaster.c</FileName>
               <FileType>1</FileType>
@@ -905,6 +935,41 @@
               <FileName>CO_LSSslave.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Middlewares\CANopenNode\305\CO_LSSslave.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/309</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_gateway_ascii.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\309\CO_gateway_ascii.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/extra</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_trace.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\extra\CO_trace.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares/CANopenNode/storage</GroupName>
+          <Files>
+            <File>
+              <FileName>CO_storage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\storage\CO_storage.c</FilePath>
+            </File>
+            <File>
+              <FileName>CO_storageEeprom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Middlewares\CANopenNode\storage\CO_storageEeprom.c</FilePath>
             </File>
           </Files>
         </Group>

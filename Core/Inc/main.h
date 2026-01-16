@@ -49,13 +49,13 @@ extern "C" {
 
 typedef struct
 {  
-  unsigned char  synchronousFlag;           // 同步标志0，未同步；1下载；2上传；3已同步；EEROM_DATA_ERR_CHECK_FLAG 未同步，无屏幕通信;0xFF未初始化 
-	unsigned char  jt_key_status;               //脚踏状态 
+  unsigned char  heartFlag;                   //  
+	unsigned char  jt_key_status;               //  脚踏状态 
   unsigned short int cool_temprature_target;  //）10倍冷却系统目标温度  
   unsigned  int laser_use_timeS;              //）连续激光使用时间S（980脉冲激光运行时间。(MAX,连续49.7天)）
   unsigned char tec_switch;                   //）制冷片开关
   unsigned char laser_led_light;              //）激光指示灯亮度
-  unsigned short int  e_cali[40];     //）功率校准值
+  unsigned short int  e_cali[40];             //）功率校准值
 }__attribute__ ((packed)) SYS_CONFIG_PARAM ;//系统配置参数
 typedef union 
 {
@@ -67,14 +67,18 @@ extern U_SYS_CONFIG_PARAM u_sys_param;
 extern U_SYS_CONFIG_PARAM u_sys_default_param;
 
 typedef struct
-{  
-  unsigned char caliFlag;;//是否校准模式
+{    
+  unsigned char       caliFlag;//是否校准模式
   unsigned short int  energe;                     //
-  unsigned short int laserContinuousTimes;        // 定时  
+  unsigned short int  laserContinuousTimes;        // 定时  
 }__attribute__ ((packed)) LASER_CTR_PARAM ;//激光控制参数
 typedef struct
 {  
   unsigned char laser_status;
+  unsigned char laser_prohot_status;
+  unsigned char laser_980_out_status;
+  unsigned int zeroFlag;        //0:not set zero   1; set  zero
+  unsigned int positionUm;     //position μm
 }__attribute__ ((packed)) LASER_980_STATUS ;//运行状态参数
 
 /* USER CODE END EM */

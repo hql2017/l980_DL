@@ -283,7 +283,7 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
   */
 PUTCHAR_PROTOTYPE
 {
-	if (HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, 0xFFFF) != HAL_OK)	
+	if (HAL_UART_Transmit(&hlpuart1, (uint8_t *)&ch, 1, 0xFFFF) != HAL_OK)		
   {
     Error_Handler();
   }

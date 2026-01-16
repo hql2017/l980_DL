@@ -57,7 +57,7 @@ CO_CANsetNormalMode(CO_CANmodule_t* CANmodule) {
     /* Put CAN module in normal mode */
     if (CANmodule->CANptr != NULL) {
 #ifdef CO_STM32_FDCAN_Driver
-        if (HAL_FDCAN_Start(((CANopenNodeSTM32*)CANmodule->CANptr)->CANHandle) == HAL_OK)
+        if ( (((CANopenNodeSTM32*)CANmodule->CANptr)->CANHandle) == HAL_OK)
 #else
         if (HAL_CAN_Start(((CANopenNodeSTM32*)CANmodule->CANptr)->CANHandle) == HAL_OK)
 #endif
@@ -126,6 +126,7 @@ CO_CANmodule_init(CO_CANmodule_t* CANmodule, void* CANptr, CO_CANrx_t rxArray[],
     if (HAL_FDCAN_ConfigGlobalFilter(((CANopenNodeSTM32*)CANptr)->CANHandle, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT,
                                      FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE)
         != HAL_OK) {
+            
         return CO_ERROR_ILLEGAL_ARGUMENT;
     }
 #else
@@ -401,19 +402,18 @@ CO_CANclearPendingSyncPDOs(CO_CANmodule_t* CANmodule) {
 /* Get error counters from the module. If necessary, function may use
     * different way to determine errors. */
 static uint16_t rxErrors = 0, txErrors = 0, overflow = 0;
-
 void
 CO_CANmodule_process(CO_CANmodule_t* CANmodule) {
     uint32_t err = 0;
 
     // CANOpen just care about Bus_off, Warning, Passive and Overflow
     // I didn't find overflow error register in STM32, if you find it please let me know
-
+   
 #ifdef CO_STM32_FDCAN_Driver
 
     err = ((FDCAN_HandleTypeDef*)((CANopenNodeSTM32*)CANmodule->CANptr)->CANHandle)->Instance->PSR
           & (FDCAN_PSR_BO | FDCAN_PSR_EW | FDCAN_PSR_EP);
-
+         
     if (CANmodule->errOld != err) {
 
         uint16_t status = CANmodule->CANerrorStatus;
@@ -586,10 +586,12 @@ prv_read_can_received_msg(CAN_HandleTypeDef* hcan, uint32_t fifo, uint32_t fifo_
  *                      the configuration information for the specified FDCAN.
  * \param[in]       RxFifo0ITs: indicates which Rx FIFO 0 interrupts are signaled.
  */
-void
+
+ void
 HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs) {
     if (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) {
         prv_read_can_received_msg(hfdcan, FDCAN_RX_FIFO0, RxFifo0ITs);
+
     }
 }
 
