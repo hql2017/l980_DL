@@ -175,6 +175,15 @@ void Error_Handler(void);
 #ifdef IWDG_USED
 #define IWDG_USED  
 #endif
+
+#ifndef MODBUS_RTU_CAN_ENABLE
+#define MODBUS_RTU_CAN_ENABLE
+#define  CAN_MASTER_ID   0x055
+#define  CAN_SLAVE_ID   0x088
+#else
+#define CANOPEN_USED
+#endif
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

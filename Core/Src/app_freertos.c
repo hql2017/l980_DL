@@ -36,9 +36,7 @@
 #include "tmc2226_step_bsp.h"
 #include "eeprom_bsp.h"
 #include "tec_control_bsp.h"
-#include "CANopen_bsp.h"
-#include "CO_app_STM32.h"
-#include "OD.h"
+#include "CAN_modbusRTU_bsp.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,7 +77,7 @@ osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
   .priority = (osPriority_t) osPriorityNormal3,
-  .stack_size = 1280 * 4
+  .stack_size = 256 * 4
 };
 /* Definitions for tecBinarySem01 */
 osSemaphoreId_t tecBinarySem01Handle;
@@ -258,22 +256,10 @@ void CANopenTask03(void *argument)
 {
   /* USER CODE BEGIN CANopenTask03 */
   /* Infinite loop */
-  CANopen_init(); 
+  CAN_modbusRTU_init(); 
   unsigned char databuff[8];
   for(;;)
-  {  
-    databuff[0] =12; 
-    databuff[1] =53;   
-    databuff[2] =24;  
-    databuff[3] =12;  
-    databuff[4] =5;  
-    databuff[5] =68;  
-    databuff[6] =97;  
-    databuff[7] =13;
-   
-   // canopen_app_process(); 
-  
-   // APP_CAN_SEND_DATA(databuff,8,23);
+  {    
     osDelay(50);      
   }
   /* USER CODE END CANopenTask03 */

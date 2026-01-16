@@ -63,7 +63,7 @@ void MX_FDCAN1_Init(void)
   hfdcan1.Init.AutoRetransmission = ENABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
-  hfdcan1.Init.NominalPrescaler = 160;
+  hfdcan1.Init.NominalPrescaler = 320;
   hfdcan1.Init.NominalSyncJumpWidth = 1;
   hfdcan1.Init.NominalTimeSeg1 = 2;
   hfdcan1.Init.NominalTimeSeg2 = 1;
@@ -119,9 +119,6 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef* fdcanHandle)
     GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* FDCAN1 interrupt Init */
-    HAL_NVIC_SetPriority(FDCAN1_IT0_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspInit 1 */
 
   /* USER CODE END FDCAN1_MspInit 1 */
@@ -145,8 +142,6 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef* fdcanHandle)
     */
     HAL_GPIO_DeInit(GPIOA, FDCAN1_RX_Pin|FDCAN1_TX_Pin);
 
-    /* FDCAN1 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspDeInit 1 */
 
   /* USER CODE END FDCAN1_MspDeInit 1 */
@@ -159,20 +154,20 @@ void FDCAN1_filter_config(void)
 	FDCAN_FilterTypeDef sFilterConfig;
 /*##-1 FDCAN1 filter########################################*/
 	/*  FIFO 0 */
-	#if 1
-	sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
-	sFilterConfig.FilterIndex = 0;         //
-	sFilterConfig.FilterType = FDCAN_FILTER_RANGE;   //range ID
-	sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;   // Rx FIFO 0
-	sFilterConfig.FilterID1 = 0x0000;   //min ID
-	sFilterConfig.FilterID2 = 0x07FF;   //max ID
+	#ifdef MODBUS_RTU_CAN_ENABLE
+    sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
+    sFilterConfig.FilterIndex = 0;         //
+    sFilterConfig.FilterType = FDCAN_FILTER_MASK;   //mask ID
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;   // Rx FIFO 0
+    sFilterConfig.FilterID1 = CAN_MASTER_ID;   //MASTER ID
+    sFilterConfig.FilterID2 = 0x7FF;   //mask
 	#else
-	sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
-	sFilterConfig.FilterIndex = 0;         //
-	sFilterConfig.FilterType = FDCAN_FILTER_DUAL;   //DUAL ID
-	sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;   // Rx FIFO 0
-	sFilterConfig.FilterID1 = CAN_IDENTIFIER_POWER_ID;   //minID
-	sFilterConfig.FilterID2 = CAN_MCU2_STATUS_ID;   //MCU ID
+    sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
+    sFilterConfig.FilterIndex = 0;         //
+    sFilterConfig.FilterType = FDCAN_FILTER_RANGE;   //range ID
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;   // Rx FIFO 0
+    sFilterConfig.FilterID1 = 0x0000;   //min ID
+    sFilterConfig.FilterID2 = 0x07FF;   //max ID	
 	#endif
 	if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK)//config fdcan filter
 	{
@@ -248,7 +243,7 @@ extern  void app_canBbus_receive_semo(void);
   * @retval None
   */
 
- __weak void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+  void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {	
   if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
   {	 
@@ -263,7 +258,6 @@ extern  void app_canBbus_receive_semo(void);
    
   //  if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0) app_canBbus_receive_semo();  
   }
-  DEBUG_PRINTF("RxMessage\n");
 }
 /***************************************************************************//**
  * @brief 发送数据包
