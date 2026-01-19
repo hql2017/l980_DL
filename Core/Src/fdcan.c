@@ -119,6 +119,9 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef* fdcanHandle)
     GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN1;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* FDCAN1 interrupt Init */
+    HAL_NVIC_SetPriority(FDCAN1_IT0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspInit 1 */
 
   /* USER CODE END FDCAN1_MspInit 1 */
@@ -142,6 +145,8 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef* fdcanHandle)
     */
     HAL_GPIO_DeInit(GPIOA, FDCAN1_RX_Pin|FDCAN1_TX_Pin);
 
+    /* FDCAN1 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspDeInit 1 */
 
   /* USER CODE END FDCAN1_MspDeInit 1 */
@@ -228,10 +233,7 @@ extern  void app_canBbus_receive_semo(void);
     }	      
     *Identifier = RxHeader.Identifier;
     *len = RxHeader.DataLength; 
-    memcpy(fd_canRxBuff,buf,RxHeader.DataLength);
-    fd_canRxLen+=RxHeader.DataLength;
-    fd_canRxLen%=MAX_FDCAN_FRAME_DATALEN;
-    //app_canBbus_receive_semo();
+    app_canBbus_receive_semo();
     return RxHeader.DataLength;
  }
  /**
@@ -252,11 +254,9 @@ extern  void app_canBbus_receive_semo(void);
    {
       Error_Handler();
 		  DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
-    }	   
-    fd_canRxLen+=RxHeader.DataLength;
-    fd_canRxLen%=(MAX_FDCAN_FRAME_DATALEN+1);  
-   
-  //  if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0) app_canBbus_receive_semo();  
+    }	  
+   // if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0)
+     app_canBbus_receive_semo();  
   }
 }
 /***************************************************************************//**

@@ -228,10 +228,7 @@ extern  void app_canBbus_receive_semo(void);
     }	      
     *Identifier = RxHeader.Identifier;
     *len = RxHeader.DataLength; 
-    memcpy(fd_canRxBuff,buf,RxHeader.DataLength);
-    fd_canRxLen+=RxHeader.DataLength;
-    fd_canRxLen%=MAX_FDCAN_FRAME_DATALEN;
-    //app_canBbus_receive_semo();
+    app_canBbus_receive_semo();
     return RxHeader.DataLength;
  }
  /**
@@ -252,11 +249,8 @@ extern  void app_canBbus_receive_semo(void);
    {
       Error_Handler();
 		  DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
-    }	   
-    fd_canRxLen+=RxHeader.DataLength;
-    fd_canRxLen%=(MAX_FDCAN_FRAME_DATALEN+1);  
-   
-  //  if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0) app_canBbus_receive_semo();  
+    }	  
+    if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0) app_canBbus_receive_semo();  
   }
 }
 /***************************************************************************//**

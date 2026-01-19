@@ -56,7 +56,7 @@ typedef struct
   unsigned char tec_switch;                   //）制冷片开关
   unsigned char laser_led_light;              //）激光指示灯亮度
   unsigned short int  e_cali[40];             //）功率校准值
-}__attribute__ ((packed)) SYS_CONFIG_PARAM ;//系统配置参数
+}__attribute__((packed)) SYS_CONFIG_PARAM ;//系统配置参数
 typedef union 
 {
 	SYS_CONFIG_PARAM sys_config_param;
@@ -71,7 +71,7 @@ typedef struct
   unsigned char       caliFlag;//是否校准模式
   unsigned short int  energe;                     //
   unsigned short int  laserContinuousTimes;        // 定时  
-}__attribute__ ((packed)) LASER_CTR_PARAM ;//激光控制参数
+}__attribute__((packed)) LASER_CTR_PARAM ;//激光控制参数
 typedef struct
 {  
   unsigned char laser_status;
@@ -79,7 +79,7 @@ typedef struct
   unsigned char laser_980_out_status;
   unsigned int zeroFlag;        //0:not set zero   1; set  zero
   unsigned int positionUm;     //position μm
-}__attribute__ ((packed)) LASER_980_STATUS ;//运行状态参数
+}__attribute__((packed)) LASER_980_STATUS ;//运行状态参数
 
 /* USER CODE END EM */
 

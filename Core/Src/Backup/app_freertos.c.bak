@@ -84,6 +84,11 @@ osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
+/* Definitions for CANreceiveBinarySem02 */
+osSemaphoreId_t CANreceiveBinarySem02Handle;
+const osSemaphoreAttr_t CANreceiveBinarySem02_attributes = {
+  .name = "CANreceiveBinarySem02"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -112,7 +117,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the semaphores(s) */
   /* creation of tecBinarySem01 */
-  tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
+  tecBinarySem01Handle = osSemaphoreNew(1, 0, &tecBinarySem01_attributes);
+
+  /* creation of CANreceiveBinarySem02 */
+  CANreceiveBinarySem02Handle = osSemaphoreNew(1, 0, &CANreceiveBinarySem02_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -259,19 +267,20 @@ void CANopenTask03(void *argument)
   CAN_modbusRTU_init(); 
   unsigned char databuff[8];
   for(;;)
-  {  
-    databuff[0] =12; 
-    databuff[1] =53;   
-    databuff[2] =24;  
-    databuff[3] =12;  
-    databuff[4] =5;  
-    databuff[5] =68;  
-    databuff[6] =97;  
-    databuff[7] =13;
-   
-   // canopen_app_process(); 
-  
-   // APP_CAN_SEND_DATA(databuff,8,23);
+  {   
+    if(osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY)==pdTRUE)
+    {
+      CAN_receivePackageHandle(databuff,8);//heart
+    }
+    databuff[0]=0x55;
+    databuff[1]=0xAA;
+    databuff[2]=2;
+    databuff[3]=3;
+    databuff[4]=4;
+    databuff[5]=5;
+    databuff[6]=6;
+    databuff[7]=7;//crc
+    APP_CAN_SEND_DATA(databuff,8,CAN_MASTER_ID); //test
     osDelay(50);      
   }
   /* USER CODE END CANopenTask03 */
@@ -310,6 +319,15 @@ void app_tec_ctr_semo(void)
 {
   osSemaphoreRelease(tecBinarySem01Handle);
 }
-
+/************************************************************************//**
+  * @brief  CAN_receive
+  * @param   
+  * @note    
+  * @retval None
+  ****************************************************************************/
+void app_canBbus_receive_semo(void)
+{
+  osSemaphoreRelease(CANreceiveBinarySem02Handle);
+}
 /* USER CODE END Application */
 

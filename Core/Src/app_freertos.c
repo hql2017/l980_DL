@@ -84,6 +84,11 @@ osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
+/* Definitions for CANreceiveBinarySem02 */
+osSemaphoreId_t CANreceiveBinarySem02Handle;
+const osSemaphoreAttr_t CANreceiveBinarySem02_attributes = {
+  .name = "CANreceiveBinarySem02"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -112,7 +117,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the semaphores(s) */
   /* creation of tecBinarySem01 */
-  tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
+  tecBinarySem01Handle = osSemaphoreNew(1, 0, &tecBinarySem01_attributes);
+
+  /* creation of CANreceiveBinarySem02 */
+  CANreceiveBinarySem02Handle = osSemaphoreNew(1, 0, &CANreceiveBinarySem02_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -259,7 +267,21 @@ void CANopenTask03(void *argument)
   CAN_modbusRTU_init(); 
   unsigned char databuff[8];
   for(;;)
-  {    
+  {   
+    //if(osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY)==pdTRUE)
+    {
+      CAN_receivePackageHandle(databuff,8);//heart
+    }
+    databuff[0]=1;
+    databuff[1]=2;
+    databuff[2]=3;
+    databuff[3]=4;
+    databuff[4]=5;
+    databuff[5]=6;
+    databuff[6]=7;
+    databuff[7]=8;//crc
+    
+    CAN_transmitPackage(RTU_CODE_R_SINGLE_REG,L980_REG_HEART_STATUS,databuff);
     osDelay(50);      
   }
   /* USER CODE END CANopenTask03 */
@@ -298,6 +320,15 @@ void app_tec_ctr_semo(void)
 {
   osSemaphoreRelease(tecBinarySem01Handle);
 }
-
+/************************************************************************//**
+  * @brief  CAN_receive
+  * @param   
+  * @note    
+  * @retval None
+  ****************************************************************************/
+void app_canBbus_receive_semo(void)
+{
+  osSemaphoreRelease(CANreceiveBinarySem02Handle);
+}
 /* USER CODE END Application */
 
