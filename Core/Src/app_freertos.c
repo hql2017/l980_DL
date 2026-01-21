@@ -52,6 +52,10 @@
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 static unsigned char zero_flag=1;
+LASER_980_STATUS laser_980_sta;
+U_SYS_CONFIG_PARAM u_sys_param;
+U_SYS_CONFIG_PARAM u_sys_default_param;
+LASER_CTR_PARAM  laser_ctr_param;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -77,7 +81,7 @@ osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
   .priority = (osPriority_t) osPriorityNormal3,
-  .stack_size = 256 * 4
+  .stack_size = 384 * 4
 };
 /* Definitions for tecBinarySem01 */
 osSemaphoreId_t tecBinarySem01Handle;
@@ -221,12 +225,12 @@ void motorTask02(void *argument)
       {
         if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
         {          
-          DEBUG_PRINTF("reverse zero\r\n ");                     
+          DEBUG_PRINTF(" reverse zero\r\n");                     
           app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_TRIP_STEPS_COUNT,3);
         }  
         else   
         {
-          DEBUG_PRINTF("find zero \r\n "); 
+          DEBUG_PRINTF(" find zero \r\n"); 
           __HAL_TIM_SET_COUNTER(&htim3,1);
           app_motor_slide_position(MOTOR_DIR_FORWARD,5000,3);
         }
@@ -243,7 +247,7 @@ void motorTask02(void *argument)
         }
         else
         {        
-          DEBUG_PRINTF(" rever  5mm\r\n ");
+          DEBUG_PRINTF(" rever 5mm\r\n ");
           app_motor_slide_position(MOTOR_DIR_REVERSE,5000,3);
         }
       }
@@ -265,24 +269,21 @@ void CANopenTask03(void *argument)
   /* USER CODE BEGIN CANopenTask03 */
   /* Infinite loop */
   CAN_modbusRTU_init(); 
-  unsigned char databuff[8];
+  unsigned char recbuff[8];
+  
+  uint8_t functionCode;
+  uint32_t Identifier;
+  uint16_t len;   
   for(;;)
-  {   
-    //if(osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY)==pdTRUE)
-    {
-      CAN_receivePackageHandle(databuff,8);//heart
-    }
-    databuff[0]=1;
-    databuff[1]=2;
-    databuff[2]=3;
-    databuff[3]=4;
-    databuff[4]=5;
-    databuff[5]=6;
-    databuff[6]=7;
-    databuff[7]=8;//crc
-    
-    CAN_transmitPackage(RTU_CODE_R_SINGLE_REG,L980_REG_HEART_STATUS,databuff);
-    osDelay(50);      
+  {  
+   // osDelay(5); 
+    osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY);
+    if(FDCAN1_Receive_Msg(recbuff, &Identifier, &len))
+    {      
+      functionCode=Identifier-CAN_SLAVE_ID; 
+      CAN_receivePackageHandle(recbuff,functionCode); 
+      osDelay(1);
+    }  
   }
   /* USER CODE END CANopenTask03 */
 }
@@ -318,6 +319,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   ****************************************************************************/
 void app_tec_ctr_semo(void)
 {
+  
   osSemaphoreRelease(tecBinarySem01Handle);
 }
 /************************************************************************//**
@@ -328,6 +330,7 @@ void app_tec_ctr_semo(void)
   ****************************************************************************/
 void app_canBbus_receive_semo(void)
 {
+    
   osSemaphoreRelease(CANreceiveBinarySem02Handle);
 }
 /* USER CODE END Application */

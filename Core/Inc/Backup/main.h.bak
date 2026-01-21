@@ -178,8 +178,13 @@ void Error_Handler(void);
 
 #ifndef MODBUS_RTU_CAN_ENABLE
 #define MODBUS_RTU_CAN_ENABLE
-#define  CAN_MASTER_ID   0x055
-#define  CAN_SLAVE_ID   0x088
+/**
+ * @brief 本设备作为“从机”
+ * receive_ID(filter)：CAN_MASTER_ID+FUNCTIONCODE(0x050~0x055)
+ * transmit_ID：CAN_MASTER_ID+FUNCTIONCODE (0x080~0x085)
+ */
+#define  CAN_MASTER_ID   0x050//start ID 
+#define  CAN_SLAVE_ID    0x080//start ID
 #else
 #define CANOPEN_USED
 #endif

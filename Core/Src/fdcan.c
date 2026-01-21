@@ -79,7 +79,7 @@ void MX_FDCAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN FDCAN1_Init 2 */
- // FDCAN1_filter_config();
+   FDCAN1_filter_config();
   /* USER CODE END FDCAN1_Init 2 */
 
 }
@@ -162,10 +162,10 @@ void FDCAN1_filter_config(void)
 	#ifdef MODBUS_RTU_CAN_ENABLE
     sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
     sFilterConfig.FilterIndex = 0;         //
-    sFilterConfig.FilterType = FDCAN_FILTER_MASK;   //mask ID
+    sFilterConfig.FilterType = FDCAN_FILTER_RANGE;   //RANGE ID
     sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;   // Rx FIFO 0
-    sFilterConfig.FilterID1 = CAN_MASTER_ID;   //MASTER ID
-    sFilterConfig.FilterID2 = 0x7FF;   //mask
+    sFilterConfig.FilterID1 = CAN_SLAVE_ID;   //SLAVE_ID ,start ID
+    sFilterConfig.FilterID2 = CAN_SLAVE_ID+5;   // SLAVE_ID+function_code
 	#else
     sFilterConfig.IdType = FDCAN_STANDARD_ID; //ID
     sFilterConfig.FilterIndex = 0;         //
@@ -220,8 +220,7 @@ extern  void app_canBbus_receive_semo(void);
   */
  uint16_t FDCAN1_Receive_Msg(uint8_t *buf, uint32_t *Identifier, uint16_t *len)
  {
-    // check FIFO0 
-    uint16_t ret_len;
+    // check FIFO0    
     if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0)
     {
       return 0; 
@@ -232,8 +231,7 @@ extern  void app_canBbus_receive_semo(void);
       DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
     }	      
     *Identifier = RxHeader.Identifier;
-    *len = RxHeader.DataLength; 
-    app_canBbus_receive_semo();
+    *len = RxHeader.DataLength;     
     return RxHeader.DataLength;
  }
  /**
@@ -250,14 +248,15 @@ extern  void app_canBbus_receive_semo(void);
   if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
   {	 
     /* Retrieve Rx messages from RX FIFO0 */    
-   if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
+   //if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
    {
-      Error_Handler();
-		  DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
+      //Error_Handler();
+		 // DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
     }	  
-   // if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0) == 0)
-     app_canBbus_receive_semo();  
+    
   }
+  app_canBbus_receive_semo();
+     
 }
 /***************************************************************************//**
  * @brief 发送数据包
@@ -267,9 +266,6 @@ extern  void app_canBbus_receive_semo(void);
 *******************************************************************************/
 void APP_CAN_SEND_DATA(	uint8_t *data,uint16_t dataLen,uint16_t targetID)
 {		
-  HAL_StatusTypeDef err;	
-  uint32_t time_out;  
-  uint16_t txlen;
   FDCAN_TxHeaderTypeDef TxHeader;	
 	TxHeader.Identifier = targetID;
 	TxHeader.IdType = FDCAN_STANDARD_ID;
@@ -280,28 +276,14 @@ void APP_CAN_SEND_DATA(	uint8_t *data,uint16_t dataLen,uint16_t targetID)
 	TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 	TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 	TxHeader.MessageMarker = 0x01;  
-  txlen = 0;  
-	while(txlen<dataLen) 
-	{	
-    time_out=0;    
-    while(HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1) ==0)
-    {   
-      HAL_Delay(1); 
-      time_out++;
-      if(time_out>100)   break;
-    }         
-    err = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1,&TxHeader,data+txlen);
-    if(err!=HAL_OK) 
-    {//restart     
-       
-      HAL_FDCAN_Stop(&hfdcan1);      
-      if(HAL_FDCAN_Start(&hfdcan1) == HAL_OK)
-      {
-        DEBUG_PRINTF("can_txerror%d\r\n",err);       
-      }	
-      break;
-    }     
-    txlen+=FDCAN_DLC_BYTES_8;    
-	}  
+  HAL_StatusTypeDef err = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1,&TxHeader,data);
+  if(err!=HAL_OK) 
+  {//restart   
+    HAL_FDCAN_Stop(&hfdcan1);      
+    if(HAL_FDCAN_Start(&hfdcan1) == HAL_OK)
+    {
+      DEBUG_PRINTF("can_txerror%d\r\n",err);       
+    }	
+  }  
 }
 /* USER CODE END 1 */

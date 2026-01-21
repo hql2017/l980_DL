@@ -77,7 +77,7 @@ osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
   .priority = (osPriority_t) osPriorityNormal3,
-  .stack_size = 256 * 4
+  .stack_size = 384 * 4
 };
 /* Definitions for tecBinarySem01 */
 osSemaphoreId_t tecBinarySem01Handle;
@@ -265,23 +265,20 @@ void CANopenTask03(void *argument)
   /* USER CODE BEGIN CANopenTask03 */
   /* Infinite loop */
   CAN_modbusRTU_init(); 
-  unsigned char databuff[8];
+  unsigned char recbuff[8];
+  uint8_t functionCode;
+  uint32_t Identifier;
+  uint16_t len;   
   for(;;)
-  {   
-    if(osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY)==pdTRUE)
-    {
-      CAN_receivePackageHandle(databuff,8);//heart
-    }
-    databuff[0]=0x55;
-    databuff[1]=0xAA;
-    databuff[2]=2;
-    databuff[3]=3;
-    databuff[4]=4;
-    databuff[5]=5;
-    databuff[6]=6;
-    databuff[7]=7;//crc
-    APP_CAN_SEND_DATA(databuff,8,CAN_MASTER_ID); //test
-    osDelay(50);      
+  {  
+   // osDelay(5); 
+    osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY);
+    while(FDCAN1_Receive_Msg(recbuff, &Identifier, &len))
+    {      
+      functionCode=Identifier-CAN_SLAVE_ID; 
+      CAN_receivePackageHandle(recbuff,functionCode);   
+      osDelay(1)  ;  
+    }     
   }
   /* USER CODE END CANopenTask03 */
 }
@@ -317,6 +314,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   ****************************************************************************/
 void app_tec_ctr_semo(void)
 {
+  
   osSemaphoreRelease(tecBinarySem01Handle);
 }
 /************************************************************************//**
@@ -327,6 +325,7 @@ void app_tec_ctr_semo(void)
   ****************************************************************************/
 void app_canBbus_receive_semo(void)
 {
+    
   osSemaphoreRelease(CANreceiveBinarySem02Handle);
 }
 /* USER CODE END Application */
