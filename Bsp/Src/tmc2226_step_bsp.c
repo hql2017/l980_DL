@@ -79,6 +79,7 @@ static unsigned short int tmc_speed_list6[6]={100,150,200,250,300,350};//rpm  ,5
 
 static void app_tmc2226_speed_set(unsigned char spdLevel);
 
+extern void app_motor_run_sta(unsigned char runFlag);
 //extern UART_HandleTypeDef huart10;;
 //usart change speed
 //??? = ?8 +?2 + ?1 + ?0
@@ -258,6 +259,7 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 	}
 	else 
 	{      
+    app_motor_run_sta(1);
 		tmc2226_dir(dir);    
     app_tmc2226_speed_set(spdLevel);
     tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);     
@@ -271,7 +273,7 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     HAL_TIM_Encoder_Start(&htim3,TIM_CHANNEL_ALL);         
     HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
     tmc2226_en(1); 
-    
+        
 	}
 }
   /**
@@ -286,6 +288,7 @@ void  tmc2226_stop(void)
   tmc2226_en(0);  
   HAL_TIM_Encoder_Stop(&htim3,TIM_CHANNEL_ALL); 
   __HAL_TIM_SetCounter(&htim4,0);
+  app_motor_run_sta(0);
 } 
  /************************************************************************//**
   * @brief 设置步进速度等级
@@ -401,3 +404,17 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
     }    
   }
 }
+
+/************************************************************************//**
+  * @brief app_get_motor_real_position 
+  * @param   
+  * @note   获取当前位置  
+  *        
+  * @retval position 单位μm
+  ****************************************************************************/
+ unsigned int app_get_motor_real_position(void)
+ {
+  unsigned int real;
+  real = __HAL_TIM_GetCounter(&htim3);
+  return real;
+ }

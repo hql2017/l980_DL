@@ -40,18 +40,26 @@
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticQueue_t osStaticMessageQDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+//motorEvent01Handle  
+#define EVENTS_MOTOR_ZERO_BIT0  			    0x01//0校准
+#define EVENTS_MOTOR_IDLE_BIT1  					0x01<<1 //电机空闲 
+#define EVENTS_MOTOR_OK_ALL_BITS_MASK        	(EVENTS_MOTOR_ZERO_BIT0|EVENTS_MOTOR_IDLE_BIT1)
+//laserEvent02Handle  
+#define EVENTS_LASER_POSITON_BIT0 			 0x01
+#define EVENTS_LASER_TEMPRATUR_BIT1  		 0x01<<1 
+#define EVENTS_LASER_VOLTAGE_BIT2  			 0x01<<2
+#define EVENTS_LASER_OK_ALL_BITS_MASK      (EVENTS_LASER_POSITON_BIT0|EVENTS_LASER_TEMPRATUR_BIT1|EVENTS_LASER_VOLTAGE_BIT2)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-static unsigned char zero_flag=1;
 LASER_980_STATUS laser_980_sta;
 U_SYS_CONFIG_PARAM u_sys_param;
 U_SYS_CONFIG_PARAM u_sys_default_param;
@@ -80,18 +88,53 @@ const osThreadAttr_t myTask02_attributes = {
 osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
-  .priority = (osPriority_t) osPriorityNormal3,
-  .stack_size = 384 * 4
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 256 * 4
+};
+/* Definitions for myTask04 */
+osThreadId_t myTask04Handle;
+const osThreadAttr_t myTask04_attributes = {
+  .name = "myTask04",
+  .priority = (osPriority_t) osPriorityNormal2,
+  .stack_size = 128 * 4
+};
+/* Definitions for myTask05 */
+osThreadId_t myTask05Handle;
+const osThreadAttr_t myTask05_attributes = {
+  .name = "myTask05",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 4
+};
+/* Definitions for motorPositonQueue01 */
+osMessageQueueId_t motorPositonQueue01Handle;
+uint8_t positonQueue01Buffer[ 2 * sizeof( uint16_t ) ];
+osStaticMessageQDef_t positonQueue01ControlBlock;
+const osMessageQueueAttr_t motorPositonQueue01_attributes = {
+  .name = "motorPositonQueue01",
+  .cb_mem = &positonQueue01ControlBlock,
+  .cb_size = sizeof(positonQueue01ControlBlock),
+  .mq_mem = &positonQueue01Buffer,
+  .mq_size = sizeof(positonQueue01Buffer)
 };
 /* Definitions for tecBinarySem01 */
 osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
-/* Definitions for CANreceiveBinarySem02 */
-osSemaphoreId_t CANreceiveBinarySem02Handle;
-const osSemaphoreAttr_t CANreceiveBinarySem02_attributes = {
-  .name = "CANreceiveBinarySem02"
+/* Definitions for canReceiveBinarySem02 */
+osSemaphoreId_t canReceiveBinarySem02Handle;
+const osSemaphoreAttr_t canReceiveBinarySem02_attributes = {
+  .name = "canReceiveBinarySem02"
+};
+/* Definitions for motorEvent01 */
+osEventFlagsId_t motorEvent01Handle;
+const osEventFlagsAttr_t motorEvent01_attributes = {
+  .name = "motorEvent01"
+};
+/* Definitions for laserEvent02 */
+osEventFlagsId_t laserEvent02Handle;
+const osEventFlagsAttr_t laserEvent02_attributes = {
+  .name = "laserEvent02"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,6 +145,8 @@ void app_tec_ctr_semo(void);
 void StartDefaultTask(void *argument);
 void motorTask02(void *argument);
 void CANopenTask03(void *argument);
+void laserWorkTask04(void *argument);
+void laserProhotTask05(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -123,8 +168,8 @@ void MX_FREERTOS_Init(void) {
   /* creation of tecBinarySem01 */
   tecBinarySem01Handle = osSemaphoreNew(1, 0, &tecBinarySem01_attributes);
 
-  /* creation of CANreceiveBinarySem02 */
-  CANreceiveBinarySem02Handle = osSemaphoreNew(1, 0, &CANreceiveBinarySem02_attributes);
+  /* creation of canReceiveBinarySem02 */
+  canReceiveBinarySem02Handle = osSemaphoreNew(1, 0, &canReceiveBinarySem02_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -133,6 +178,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of motorPositonQueue01 */
+  motorPositonQueue01Handle = osMessageQueueNew (2, sizeof(uint16_t), &motorPositonQueue01_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -148,9 +197,22 @@ void MX_FREERTOS_Init(void) {
   /* creation of myTask03 */
   myTask03Handle = osThreadNew(CANopenTask03, NULL, &myTask03_attributes);
 
+  /* creation of myTask04 */
+  myTask04Handle = osThreadNew(laserWorkTask04, NULL, &myTask04_attributes);
+
+  /* creation of myTask05 */
+  myTask05Handle = osThreadNew(laserProhotTask05, NULL, &myTask05_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* Create the event(s) */
+  /* creation of motorEvent01 */
+  motorEvent01Handle = osEventFlagsNew(&motorEvent01_attributes);
+
+  /* creation of laserEvent02 */
+  laserEvent02Handle = osEventFlagsNew(&laserEvent02_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -187,7 +249,9 @@ void StartDefaultTask(void *argument)
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
     DEBUG_PRINTF("POSITON:pos=%dμm\r\n",(htim3.Instance->CNT)>>1);
-    osDelay(1000);      
+    DEBUG_PRINTF("canpac=%d\r\n",can_count);    
+    osDelay(1000); 
+    HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);     
     if(osSemaphoreAcquire(tecBinarySem01Handle,0))
     {
       //DEBUG_PRINTF("tec start\r\n");
@@ -215,44 +279,52 @@ void motorTask02(void *argument)
   /* Infinite loop */
   tmc2226_init(); 
   unsigned int local_system=0;
+  unsigned short int targetPosition=0;
+  unsigned  int realPosition=0;
+  osDelay(2000);
   for(;;)
   {
-    local_system++;    
-    local_system%=20;
-    if(zero_flag)
+    uint32_t motor_events =osEventFlagsGet(motorEvent01Handle); 
+    if(motor_events==EVENTS_MOTOR_OK_ALL_BITS_MASK)  
     {
-      if(local_system==2)
-      {
-        if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
-        {          
-          DEBUG_PRINTF(" reverse zero\r\n");                     
-          app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_TRIP_STEPS_COUNT,3);
-        }  
-        else   
+      realPosition=app_get_motor_real_position();
+      if(osMessageQueueGet(motorPositonQueue01Handle, &targetPosition, NULL, 50)==osOK)
+      {   
+        if(realPosition!=targetPosition)
         {
-          DEBUG_PRINTF(" find zero \r\n"); 
-          __HAL_TIM_SET_COUNTER(&htim3,1);
-          app_motor_slide_position(MOTOR_DIR_FORWARD,5000,3);
+          if(realPosition>targetPosition)
+          {
+            app_motor_slide_position(MOTOR_DIR_REVERSE,targetPosition,3);
+          }
+          else app_motor_slide_position(MOTOR_DIR_FORWARD,targetPosition,3);
         }
-      }
+      }      
     }
     else 
     {
-      if(local_system==10)
+      if((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1) 
       {
-        if((htim3.Instance->CNT)<12000)
-        {
-          DEBUG_PRINTF(" forward 14mm\r\n ");
-          app_motor_slide_position(MOTOR_DIR_FORWARD,12000,3);
+        if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_RESET)
+        {    
+          DEBUG_PRINTF(" reverse zero\r\n");  
+          app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_UM,3);
         }
-        else
-        {        
-          DEBUG_PRINTF(" rever 5mm\r\n ");
-          app_motor_slide_position(MOTOR_DIR_REVERSE,5000,3);
+        else   
+        {  
+          DEBUG_PRINTF("prepare find zero \r\n"); 
+          __HAL_TIM_SET_COUNTER(&htim3,1);
+          app_motor_slide_position(MOTOR_DIR_FORWARD,5000,3);
         }
-      }
+      }  
+      else 
+      {
+        if(osMessageQueueGet(motorPositonQueue01Handle, &targetPosition, NULL, 0)==osOK)
+        {          
+          DEBUG_PRINTF("motor is moving\r\n"); 
+        }
+      }    
     }
-    osDelay(1000);
+    osDelay(5);
   }
   /* USER CODE END motorTask02 */
 }
@@ -268,24 +340,59 @@ void CANopenTask03(void *argument)
 {
   /* USER CODE BEGIN CANopenTask03 */
   /* Infinite loop */
-  CAN_modbusRTU_init(); 
-  unsigned char recbuff[8];
-  
-  uint8_t functionCode;
-  uint32_t Identifier;
-  uint16_t len;   
+  uint8_t buff[8];
+   uint32_t Identifier;
+    uint16_t len;
   for(;;)
-  {  
-   // osDelay(5); 
-    osSemaphoreAcquire(CANreceiveBinarySem02Handle,portMAX_DELAY);
-    if(FDCAN1_Receive_Msg(recbuff, &Identifier, &len))
-    {      
-      functionCode=Identifier-CAN_SLAVE_ID; 
-      CAN_receivePackageHandle(recbuff,functionCode); 
-      osDelay(1);
-    }  
+  {    
+   if( osSemaphoreAcquire(canReceiveBinarySem02Handle,portMAX_DELAY)==osOK)
+   {
+    if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
+    {  
+      uint8_t packageType = Identifier-CAN_SLAVE_ID;  
+      CAN_receivePackageHandle(buff,packageType);      
+    }
+   }
+    
+    osDelay(1);
   }
   /* USER CODE END CANopenTask03 */
+}
+
+/* USER CODE BEGIN Header_laserWorkTask04 */
+/**
+* @brief Function implementing the myTask04 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_laserWorkTask04 */
+void laserWorkTask04(void *argument)
+{
+  /* USER CODE BEGIN laserWorkTask04 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END laserWorkTask04 */
+}
+
+/* USER CODE BEGIN Header_laserProhotTask05 */
+/**
+* @brief Function implementing the myTask05 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_laserProhotTask05 */
+void laserProhotTask05(void *argument)
+{
+  /* USER CODE BEGIN laserProhotTask05 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END laserProhotTask05 */
 }
 
 /* Private application code --------------------------------------------------*/
@@ -304,7 +411,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       if(HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin)==GPIO_PIN_SET)
       {
         tmc2226_stop(); 
-        zero_flag=0;
+        osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_ZERO_BIT0);  
         DEBUG_PRINTF("index zero encode=%d \r\n",htim3.Instance->CNT);  
         __HAL_TIM_SET_COUNTER(&htim3,0);
       }      
@@ -319,19 +426,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   ****************************************************************************/
 void app_tec_ctr_semo(void)
 {
-  
   osSemaphoreRelease(tecBinarySem01Handle);
 }
-/************************************************************************//**
-  * @brief  CAN_receive
+ /************************************************************************//**
+  * @brief  app_can_receive_semo
   * @param   
   * @note    
   * @retval None
   ****************************************************************************/
-void app_canBbus_receive_semo(void)
-{
-    
-  osSemaphoreRelease(CANreceiveBinarySem02Handle);
-}
+ void app_can_receive_semo(void)
+ {
+   osSemaphoreRelease(canReceiveBinarySem02Handle);
+ }
+ /************************************************************************//**
+  * @brief  app_motor_run_sta
+  * @param   runflag:0stop;1move
+  * @note    
+  * @retval None
+  ****************************************************************************/
+ void app_motor_run_sta(unsigned char runFlag)
+ {
+  if(runFlag==0)  osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
+  else  osEventFlagsClear(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
+ }
 /* USER CODE END Application */
 

@@ -85,7 +85,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
 void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
 {
   unsigned char transmitBuff[8];
-  transmitBuff[0] = reg; 
+  transmitBuff[0] = reg|L980_REG_WRITE_MASK; 
   transmitBuff[1] = 1; 
   transmitBuff[2] = flag; 
   transmitBuff[3] = (CAN_crc16Num(transmitBuff,3)>>8)&0xFF;
@@ -109,7 +109,7 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
  /************************************************************************//**
   * @brief  CAN_LongPackageHandle
   * @param   
-  * @note    can 数据处理
+  * @note   can 数据处理
   * @retval None
   ****************************************************************************/
  void CAN_LongPackageHandle( unsigned char *data)
@@ -299,6 +299,7 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
   * @note   单通道写
   * @retval None
   ****************************************************************************/
+ unsigned  int can_count;
  void L980_appWriteAck(unsigned char reg,unsigned char *data)
  {
   unsigned char transmitBuff[8];
@@ -366,7 +367,7 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
         }
       break;
     case L980_REG_LASER_TEMPRATURE:
-        {            
+        {         
           u_sys_param.sys_config_param.cool_temprature_target=(data[0]<<8)|data[1];
           CAN_pack_w_ack( reg,1); 
         }
@@ -385,30 +386,8 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
     default:
       break;
   }
-
-
  }
-  /************************************************************************//**
-  * @brief  L980_appMutipleReadAck
-  * @param    
-  * @note   多通道读
-  * @retval None
-  ****************************************************************************/
- void L980_appMutipleRegReadAck(unsigned char startReg,unsigned char offeset,unsigned char *data)
- {
 
- }
- /************************************************************************//**
-  * @brief  L980_appMutipleRegWriteAck
-  * @param    
-  * @note   多通道写
-  * @retval None
-  ****************************************************************************/
- void L980_appMutipleRegWriteAck(unsigned char startReg,unsigned char offeset,unsigned char *data)
- {
-
-
- }
  /************************************************************************//**
   * @brief  L980_appRegDataParaphrase
   * @param    
@@ -418,16 +397,16 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
  void L980_appRegDataParaphrase(L980_can_app_package *pPkt,unsigned char functionCode)
  {   
     if(functionCode == L980_REG_WRITE_MASK)
-    {   
-      DEBUG_PRINTF(" CAN_R reg\r\n ");
-      L980_appReadAck(pPkt->laser980Reg,pPkt->data);
+    {  
+      DEBUG_PRINTF(" CAN_w reg\r\n ");
+      L980_appWriteAck(pPkt->laser980Reg,pPkt->data);       
     }  
     else 
     {
-      DEBUG_PRINTF(" CAN_w reg\r\n ");
-      L980_appWriteAck(pPkt->laser980Reg,pPkt->data);
+       can_count++;
+      //DEBUG_PRINTF(" CAN_R len=%d\r\n ",can_count);
+      L980_appReadAck(pPkt->laser980Reg,pPkt->data);
     }
-     
  }
 /************************************************************************//**
   * @brief  CAN_receivePackageHandle
@@ -453,7 +432,7 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
       pL980.data = &data[2];     
       pL980.crcH = data[pL980.packLen+2];  
       pL980.crcL = data[pL980.packLen+3]; 
-      L980_appRegDataParaphrase(&pL980,L980_REG_WRITE_MASK);
+      L980_appRegDataParaphrase(&pL980,functionCode);
     } 
     else  
     {

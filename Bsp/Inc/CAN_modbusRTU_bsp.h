@@ -7,19 +7,19 @@
  */
 #ifndef CAN_MODBUSRTU__H_
 #define  CAN_MODBUSRTU__H_
-
-
 /**
  * R:read 
  * W:write 
  * 非标准modbusRTU功能码
  * ************/
+#define L980_CAN_MINI_TIME_MS  30//安全包间隔
+#define L980_CODE_MASK  0x80
+#define L980_REG_WRITE_MASK  0x80// write:bit7=1 ;read:bit7=0。
 typedef enum {		
 	RTU_CODE_SINGLE_PACKAGE=0,//单包
 	RTU_CODE_LONG_BYTES_PACKAGE  //分包发送
 }rtu_function_code;
-#define L980_CODE_MASK  0x80
-#define L980_REG_WRITE_MASK  0x80// write:bit7=1 ;read:bit7=0。
+
 typedef enum {
 	L980_NO_OPTION=0,
 	L980_CTR_CMD,
@@ -35,11 +35,17 @@ typedef enum {
 	L980_REG_ENERGE_CALIBRATION,	//r/w data1 :cali_p_H  data2:cali_p_L
 	L980_REG_MOTOR_POSITION,		//r/W偏光片位置。data0 :um_H data1 : um_L 	
 	L980_REG_LASER_TEMPRATURE,		//r/w激光器温度(10倍241:24.1℃) data1:set_T_H data2:set_T_L data3:real_T_H data4:real_T_L
+	L980_REG_MULTIPLE_READ,         //多通道读
+	L980_REG_MULTIPLE_WRITE,        //多通道写
 	REG_AUX_REG,                    //r/w其他数据
 }L980_cmd;
 /** 
  * CAN数据帧解析
- * functionCode=RTU_CODE_LONG_BYTES_PACKAGE
+ * 读指令数据结构：
+ * reg+(datalen=1)+(Nbytes 需要读取的数据长度)+crc
+ * 读返回：reg+(datalen=N)+(Nbytes数据)+crc
+ * 写指令数据结构：
+ * reg+(datalen=N)+(Nbytes数据)+crc
  * pPkt：point package struct
  * 大端模式处理发送数据
  * ************/
@@ -59,6 +65,8 @@ typedef struct {
 void CAN_modbusRTU_init(void);
 void CAN_receivePackageHandle(unsigned char *data,unsigned char packageType);
 void CAN_transmitPackage(unsigned char function,unsigned char code,unsigned char *data);
+
+extern unsigned  int can_count;//test
 #endif /*  CAN_MODBUSRTU__H_ */
 
 
