@@ -255,7 +255,7 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
             transmitBuff[0] = reg; 
             transmitBuff[1] = readBytes; 
             transmitBuff[2] = (u_sys_param.sys_config_param.motor_positon_um_set>>8)&0xFF; 
-            transmitBuff[3] = (u_sys_param.sys_config_param.motor_positon_um_set>>8)&0xFF;  
+            transmitBuff[3] = (u_sys_param.sys_config_param.motor_positon_um_set)&0xFF;  
             transmitBuff[4] = (laser_980_sta.real_motor_positon_um>>8)&0xFF;
             transmitBuff[5] = (laser_980_sta.real_motor_positon_um)&0xFF;            
             transmitBuff[6] = (CAN_crc16Num(transmitBuff,6)>>8)&0xFF;
@@ -269,8 +269,8 @@ void CAN_pack_w_ack(unsigned char reg,unsigned char flag)
             transmitBuff[1] = readBytes; 
             transmitBuff[2] = (u_sys_param.sys_config_param.cool_temprature_target>>8)&0xFF; //set  T
             transmitBuff[3] = (u_sys_param.sys_config_param.cool_temprature_target>>8)&0xFF;  
-            transmitBuff[4] = (laser_980_sta.real_laser_temprature>>8)&0xFF;//real T
-            transmitBuff[5] = (laser_980_sta.real_laser_temprature)&0xFF;            
+            transmitBuff[4] = (((unsigned int )laser_980_sta.real_laser_temprature*10)>>8)&0xFF;//real T
+            transmitBuff[5] = ((unsigned int )laser_980_sta.real_laser_temprature*10)&0xFF;            
             transmitBuff[6] = (CAN_crc16Num(transmitBuff,6)>>8)&0xFF;
             transmitBuff[7] = CAN_crc16Num(transmitBuff,6)&0xFF;  
             CAN_transmitPackage(RTU_CODE_SINGLE_PACKAGE,1,transmitBuff);

@@ -126,9 +126,6 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef* fdcanHandle)
     GPIO_InitStruct.Alternate = GPIO_AF9_FDCAN1;
     HAL_GPIO_Init(FDCAN1_TX_GPIO_Port, &GPIO_InitStruct);
 
-    /* FDCAN1 interrupt Init */
-    HAL_NVIC_SetPriority(FDCAN1_IT0_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspInit 1 */
 
   /* USER CODE END FDCAN1_MspInit 1 */
@@ -152,8 +149,6 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef* fdcanHandle)
     */
     HAL_GPIO_DeInit(GPIOA, FDCAN1_RX_Pin|FDCAN1_TX_Pin);
 
-    /* FDCAN1 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(FDCAN1_IT0_IRQn);
   /* USER CODE BEGIN FDCAN1_MspDeInit 1 */
 
   /* USER CODE END FDCAN1_MspDeInit 1 */
@@ -249,19 +244,16 @@ ErrorStatus FDCAN1_Send_Msg(uint8_t* msg,uint16_t targetID)
   *         This parameter can be any combination of @arg FDCAN_Rx_Fifo0_Interrupts.
   * @retval None
   */
- extern void app_can_receive_semo(void);
   void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {	
   if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
   {	 
     /* Retrieve Rx messages from RX FIFO0 */    
-   //if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
+   if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
    {
-      //Error_Handler();
-		  //DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
-    }	       
-    //DEBUG_PRINTF("le%d\n",HAL_FDCAN_GetRxFifoFillLevel(&hfdcan1, FDCAN_RX_FIFO0));   
-    app_can_receive_semo();
+      Error_Handler();
+		  DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");
+    }	 
   }
 }
 /***************************************************************************//**

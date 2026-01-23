@@ -223,7 +223,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }  
   if(htim->Instance == TIM2) {  
     tec_stop();     
-    app_tec_ctr_semo();
+
     DEBUG_PRINTF("tec time out\r\n ");
   }
  

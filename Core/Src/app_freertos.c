@@ -27,7 +27,6 @@
 /* USER CODE BEGIN Includes */
 #include "string.h"
 #include "stdio.h"
-
 #include "adc.h"
 #include "tim.h"
 #include "dac.h"
@@ -56,6 +55,20 @@ typedef StaticQueue_t osStaticMessageQDef_t;
 #define EVENTS_LASER_TEMPRATUR_BIT1  		 0x01<<1 
 #define EVENTS_LASER_VOLTAGE_BIT2  			 0x01<<2
 #define EVENTS_LASER_OK_ALL_BITS_MASK      (EVENTS_LASER_POSITON_BIT0|EVENTS_LASER_TEMPRATUR_BIT1|EVENTS_LASER_VOLTAGE_BIT2)
+
+//deviceErrorEvent03  
+#define EVENTS_DEV_ERR_CAN_HEART_BIT0 			       0x01
+#define EVENTS_DEV_ERR_TEC_CTR_BIT1  		           0x01<<1 
+#define EVENTS_DEV_ERR_MOTOR_TMC_BIT2  		         0x01<<2
+#define EVENTS_DEV_ERR_LASER_TEMPRATURE_BIT3  		 0x01<<3
+#define EVENTS_DEV_ERR_MOTOR_TEMPRATURE_BIT4 		   0x01<<4
+#define EVENTS_DEV_ERR_POSITON_BIT5 			         0x01<<5
+#define EVENTS_DEV_ERR_VBUS_BIT6 			             0x01<<6
+#define EVENTS_DEV_ERR_IBUS_BIT7			             0x01<<7
+#define EVENTS_DEV_ERR_ALL_BITS_MASK  (EVENTS_DEV_ERR_CAN_HEART_BIT0|EVENTS_DEV_ERR_TEC_CTR_BIT1|EVENTS_DEV_ERR_MOTOR_TMC_BIT2\
+                                      |EVENTS_DEV_ERR_LASER_TEMPRATURE_BIT3|EVENTS_DEV_ERR_MOTOR_TEMPRATURE_BIT4 \
+                                      |EVENTS_DEV_ERR_POSITON_BIT5|EVENTS_DEV_ERR_VBUS_BIT6|EVENTS_DEV_ERR_IBUS_BIT7)
+       
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -121,11 +134,6 @@ osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
-/* Definitions for canReceiveBinarySem02 */
-osSemaphoreId_t canReceiveBinarySem02Handle;
-const osSemaphoreAttr_t canReceiveBinarySem02_attributes = {
-  .name = "canReceiveBinarySem02"
-};
 /* Definitions for motorEvent01 */
 osEventFlagsId_t motorEvent01Handle;
 const osEventFlagsAttr_t motorEvent01_attributes = {
@@ -136,10 +144,16 @@ osEventFlagsId_t laserEvent02Handle;
 const osEventFlagsAttr_t laserEvent02_attributes = {
   .name = "laserEvent02"
 };
+/* Definitions for deviceErrorEvent03 */
+osEventFlagsId_t deviceErrorEvent03Handle;
+const osEventFlagsAttr_t deviceErrorEvent03_attributes = {
+  .name = "deviceErrorEvent03"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 void app_tec_ctr_semo(void);
+void app_tec_auto_manage(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -166,10 +180,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the semaphores(s) */
   /* creation of tecBinarySem01 */
-  tecBinarySem01Handle = osSemaphoreNew(1, 0, &tecBinarySem01_attributes);
-
-  /* creation of canReceiveBinarySem02 */
-  canReceiveBinarySem02Handle = osSemaphoreNew(1, 0, &canReceiveBinarySem02_attributes);
+  tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -214,6 +225,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of laserEvent02 */
   laserEvent02Handle = osEventFlagsNew(&laserEvent02_attributes);
 
+  /* creation of deviceErrorEvent03 */
+  deviceErrorEvent03Handle = osEventFlagsNew(&deviceErrorEvent03_attributes);
+
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
@@ -248,20 +262,11 @@ void StartDefaultTask(void *argument)
     DEBUG_PRINTF(" tec_T=%.1f℃",local_disp);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
-    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",(htim3.Instance->CNT)>>1);
+    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",laser_980_sta.real_motor_positon_um);
     DEBUG_PRINTF("canpac=%d\r\n",can_count);    
     osDelay(1000); 
-    HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);     
-    if(osSemaphoreAcquire(tecBinarySem01Handle,0))
-    {
-      //DEBUG_PRINTF("tec start\r\n");
-      
-      //tec_start(100,500);
-    }
-    else
-    {
-      //DEBUG_PRINTF("tec busy\r\n");
-    }
+    HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);    
+    app_tec_auto_manage();
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -280,19 +285,18 @@ void motorTask02(void *argument)
   tmc2226_init(); 
   unsigned int local_system=0;
   unsigned short int targetPosition=0;
-  unsigned  int realPosition=0;
-  osDelay(2000);
+  osDelay(1000);
   for(;;)
   {
     uint32_t motor_events =osEventFlagsGet(motorEvent01Handle); 
     if(motor_events==EVENTS_MOTOR_OK_ALL_BITS_MASK)  
     {
-      realPosition=app_get_motor_real_position();
+      laser_980_sta.real_motor_positon_um=app_get_motor_real_position();
       if(osMessageQueueGet(motorPositonQueue01Handle, &targetPosition, NULL, 50)==osOK)
       {   
-        if(realPosition!=targetPosition)
+        if(laser_980_sta.real_motor_positon_um!=targetPosition)
         {
-          if(realPosition>targetPosition)
+          if(laser_980_sta.real_motor_positon_um>targetPosition)
           {
             app_motor_slide_position(MOTOR_DIR_REVERSE,targetPosition,3);
           }
@@ -344,16 +348,12 @@ void CANopenTask03(void *argument)
    uint32_t Identifier;
     uint16_t len;
   for(;;)
-  {    
-   if( osSemaphoreAcquire(canReceiveBinarySem02Handle,portMAX_DELAY)==osOK)
-   {
+  {   
     if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
     {  
       uint8_t packageType = Identifier-CAN_SLAVE_ID;  
       CAN_receivePackageHandle(buff,packageType);      
     }
-   }
-    
     osDelay(1);
   }
   /* USER CODE END CANopenTask03 */
@@ -418,7 +418,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
   }
 }
- /************************************************************************//**
+/************************************************************************//**
   * @brief  relese
   * @param   
   * @note    
@@ -429,18 +429,8 @@ void app_tec_ctr_semo(void)
   osSemaphoreRelease(tecBinarySem01Handle);
 }
  /************************************************************************//**
-  * @brief  app_can_receive_semo
-  * @param   
-  * @note    
-  * @retval None
-  ****************************************************************************/
- void app_can_receive_semo(void)
- {
-   osSemaphoreRelease(canReceiveBinarySem02Handle);
- }
- /************************************************************************//**
   * @brief  app_motor_run_sta
-  * @param   runflag:0stop;1move
+  * @param  runflag:0stop;1move
   * @note    
   * @retval None
   ****************************************************************************/
@@ -449,5 +439,33 @@ void app_tec_ctr_semo(void)
   if(runFlag==0)  osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
   else  osEventFlagsClear(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
  }
+/************************************************************************//**
+* @brief  app_tec_auto_manage
+* @param  
+* @note    
+* @retval None
+****************************************************************************/
+void app_tec_auto_manage(void)
+{
+  int volta;    
+  if(laser_980_sta.real_laser_temprature+0.2<u_sys_param.sys_config_param.cool_temprature_target*0.1)
+  {
+    volta = 100;//volta=-100;
+    if(osSemaphoreAcquire(tecBinarySem01Handle,0)==osOK)
+    {
+      tec_start(volta|0x80,500);
+    } 
+    else DEBUG_PRINTF("the tec is running\r\n");        
+  }
+  else if(laser_980_sta.real_laser_temprature>0.2+u_sys_param.sys_config_param.cool_temprature_target*0.1)
+  {  
+    volta = 100;
+    if(osSemaphoreAcquire(tecBinarySem01Handle,0)==osOK)
+    {
+      tec_start(volta,500);
+    } 
+    else DEBUG_PRINTF("the tec is running\r\n");
+  }  
+}
 /* USER CODE END Application */
 

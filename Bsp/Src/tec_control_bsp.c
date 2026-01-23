@@ -10,7 +10,9 @@
 #include "main.h"
 #include "usart.h"
 #include "tim.h"
+#include "stdlib.h"
 
+#define  TEC_COOL_DIR  0
 /**
   * @brief tec_pwm_set
   * @param  void
@@ -63,7 +65,11 @@
 		period=100;
 		__HAL_TIM_SetAutoreload(&htim20,period-1);//freq =100k
 		//duty 1%  100%; 0% close	
-		timeUs=period /2;	//duty 50%
+    //duty=(outVoltage*100/24)=outVoltage*25/6;
+		//timeUs=period /2;	//duty 50% ,tset
+    timeUs=outVoltage*25/6;
+    if(timeUs<1) timeUs=1;
+    if(timeUs>100) timeUs=100;
 		__HAL_TIM_SetCompare(&htim20,TIM_CHANNEL_3,timeUs-1);
 		//HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);
   }
@@ -76,17 +82,21 @@
    /**
   * @brief tec_pwm_set
   * @param  void
-  * @note   outVoltage
+  * @note   outVoltage:<0 降温； >0 升温 ； =0 停止
   * @retval None
   */
- void tec_start(unsigned short int outVoltage,unsigned  int runtimeMs)
+ void tec_start(  int outVoltage,unsigned  int runtimeMs)
  {
     if(outVoltage==0) tec_stop();
     else 
     {
-      tec_pwm_set(outVoltage);       
+      if(outVoltage<0)
+      {
+        tec_dir(TEC_COOL_DIR);
+      }
+      else tec_dir(!TEC_COOL_DIR);
+      tec_pwm_set((unsigned short int )(abs(outVoltage)));       
       HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);
-
       __HAL_TIM_SET_AUTORELOAD(&htim2,runtimeMs*10);//htim2 10K
       HAL_TIM_Base_Start_IT(&htim2);
     }    
@@ -97,8 +107,10 @@
   * @note   outVoltage
   * @retval None
   */
+ extern void app_tec_ctr_semo(void);
  void tec_stop(void)
  {
   HAL_TIM_PWM_Stop(&htim20,TIM_CHANNEL_3);
   HAL_TIM_Base_Stop_IT(&htim2);
+  app_tec_ctr_semo();
  } 

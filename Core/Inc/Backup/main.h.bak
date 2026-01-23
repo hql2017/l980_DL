@@ -84,12 +84,12 @@ typedef struct
   unsigned char auxiliary_bulb_staus;
   unsigned char laser_ctr_JT_status;                 //JT控制信号
   unsigned short int laser_real_energe;              //输出能量反馈
-  unsigned short int real_laser_temprature;          //激光器温度
   unsigned short int real_timers;                    //倒计时
   unsigned short int real_motor_positon_um;          //当前位置
-  unsigned short int real_photodiod_value;           //光电二极管反馈值
-  unsigned short int real_tmc_temprature;            //丝杆电机控制器TMC2226温度
+  unsigned short int real_photodiod_value;           //光电二极管反馈值 
   unsigned int sys_run_status_value;                 //32 bit
+  float real_laser_temprature;          //激光器温度
+  float real_tmc_temprature;            //丝杆电机控制器TMC2226温度
 }__attribute__((packed)) LASER_980_STATUS;//运行状态参数
 extern LASER_980_STATUS laser_980_sta;
 extern LASER_CTR_PARAM  laser_ctr_param;

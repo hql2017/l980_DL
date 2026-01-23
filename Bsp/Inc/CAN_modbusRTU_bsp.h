@@ -12,7 +12,7 @@
  * W:write 
  * 非标准modbusRTU功能码
  * ************/
-#define L980_CAN_MINI_TIME_MS  30//安全包间隔
+#define L980_CAN_MINI_TIME_MS  50//安全包间隔
 #define L980_CODE_MASK  0x80
 #define L980_REG_WRITE_MASK  0x80// write:bit7=1 ;read:bit7=0。
 typedef enum {		

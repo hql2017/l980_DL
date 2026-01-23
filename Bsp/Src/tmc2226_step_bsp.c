@@ -415,6 +415,6 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
  unsigned int app_get_motor_real_position(void)
  {
   unsigned int real;
-  real = __HAL_TIM_GetCounter(&htim3);
+  real = (__HAL_TIM_GetCounter(&htim3))>>1;
   return real;
  }
