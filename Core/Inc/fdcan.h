@@ -38,6 +38,10 @@ extern FDCAN_HandleTypeDef hfdcan1;
 #define MAX_FDCAN_FRAME_DATALEN  312
 extern unsigned char fd_canRxBuff[MAX_FDCAN_FRAME_DATALEN+1];
 extern unsigned short int  fd_canRxLen;
+
+#define  FDCAN_ID_HMI      0x7FF //屏幕
+#define  CAN_RTU_MASTER_ID  0x080 //本地 start ID
+#define  CAN_RTU_SLAVE_ID   0x050 //L980 start ID
 /* USER CODE END Private defines */
 
 void MX_FDCAN1_Init(void);

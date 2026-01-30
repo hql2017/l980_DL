@@ -134,6 +134,21 @@ osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
+/* Definitions for prohotBinarySem02 */
+osSemaphoreId_t prohotBinarySem02Handle;
+const osSemaphoreAttr_t prohotBinarySem02_attributes = {
+  .name = "prohotBinarySem02"
+};
+/* Definitions for laserCloseBinarySem03 */
+osSemaphoreId_t laserCloseBinarySem03Handle;
+const osSemaphoreAttr_t laserCloseBinarySem03_attributes = {
+  .name = "laserCloseBinarySem03"
+};
+/* Definitions for poweroffBinarySem04 */
+osSemaphoreId_t poweroffBinarySem04Handle;
+const osSemaphoreAttr_t poweroffBinarySem04_attributes = {
+  .name = "poweroffBinarySem04"
+};
 /* Definitions for motorEvent01 */
 osEventFlagsId_t motorEvent01Handle;
 const osEventFlagsAttr_t motorEvent01_attributes = {
@@ -154,6 +169,7 @@ const osEventFlagsAttr_t deviceErrorEvent03_attributes = {
 /* USER CODE BEGIN FunctionPrototypes */
 void app_tec_ctr_semo(void);
 void app_tec_auto_manage(void);
+unsigned short int  app_laser_1064_energe_to_voltage(unsigned short int energe);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -181,6 +197,15 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of tecBinarySem01 */
   tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
+
+  /* creation of prohotBinarySem02 */
+  prohotBinarySem02Handle = osSemaphoreNew(1, 0, &prohotBinarySem02_attributes);
+
+  /* creation of laserCloseBinarySem03 */
+  laserCloseBinarySem03Handle = osSemaphoreNew(1, 0, &laserCloseBinarySem03_attributes);
+
+  /* creation of poweroffBinarySem04 */
+  poweroffBinarySem04Handle = osSemaphoreNew(1, 0, &poweroffBinarySem04_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -262,8 +287,7 @@ void StartDefaultTask(void *argument)
     DEBUG_PRINTF(" tec_T=%.1f℃",local_disp);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
-    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",laser_980_sta.real_motor_positon_um);
-    DEBUG_PRINTF("canpac=%d\r\n",can_count);    
+    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",laser_980_sta.real_motor_positon_um);       
     osDelay(1000); 
     HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);    
     app_tec_auto_manage();
@@ -347,13 +371,21 @@ void CANopenTask03(void *argument)
   uint8_t buff[8];
    uint32_t Identifier;
     uint16_t len;
+    uint32_t l980_heart_timeout=osKernelGetTickCount();
   for(;;)
   {   
     if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
     {  
-      uint8_t packageType = Identifier-CAN_SLAVE_ID;  
-      CAN_receivePackageHandle(buff,packageType);      
+      uint8_t packageType = Identifier-CAN_MASTER_ID;  
+      CAN_receivePackageHandle(buff,packageType);  
+      l980_sta.staByte|=L980_STA_HEART_BIT0;  //heart
+      l980_heart_timeout=osKernelGetTickCount();    
     }
+    if(osKernelGetTickCount()>l980_heart_timeout+L980_CAN_FRAME_TIMEOUT)
+    {//l980 heart timeout 
+      l980_heart_timeout=osKernelGetTickCount();  
+      memset(&l980_sta,0,sizeof(L980_STATUS));//clear      
+    }     
     osDelay(1);
   }
   /* USER CODE END CANopenTask03 */
@@ -388,8 +420,39 @@ void laserProhotTask05(void *argument)
 {
   /* USER CODE BEGIN laserProhotTask05 */
   /* Infinite loop */
+  unsigned int timeout=0;
+  unsigned char local_prohot;
+  
   for(;;)
   {
+    osSemaphoreAcquire(prohotBinarySem02Handle,portMAX_DELAY);
+    local_prohot=laser_ctr_param.pro_hot;
+    if(local_prohot!=0)
+    {
+      app_motor_slide_position(MOTOR_DIR_FORWARD,u_l980.set_param.positionSet,3);
+      //laser_ctr_param.energe=u_l980.set_param.energeSet+u_l980.set_param.energeCaliSet;
+      laser_ctr_param.energe=u_l980.set_param.energeSet;
+      unsigned short int dac_voltage= app_laser_1064_energe_to_voltage(laser_ctr_param.energe);
+      app_dac_out(dac_voltage);
+      timeout=0; 
+      do
+      {
+        osDelay(L980_CAN_MINI_TIME_MS);
+        timeout+=L980_CAN_MINI_TIME_MS;
+        if(timeout>MAX_PROHOT_WAIT_TIME_S)
+        {
+          l980_sta.staByte&=(~L980_STA_PROHOT_BIT1);
+          DEBUG_PRINTF("l9890 prohot fail\r\n");
+          break;
+        }
+      }while(l980_sta.realPosition!=app_get_motor_real_position());         
+      uint32_t laser_event=osEventFlagsGet(laserEvent02Handle);
+      if((laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)==EVENTS_LASER_OK_ALL_BITS_MASK)
+      {
+        l980_sta.staByte|=L980_STA_PROHOT_BIT1;
+        DEBUG_PRINTF("l9890 prohot success\r\n");
+      }      
+    }
     osDelay(1);
   }
   /* USER CODE END laserProhotTask05 */
@@ -428,6 +491,30 @@ void app_tec_ctr_semo(void)
 {
   osSemaphoreRelease(tecBinarySem01Handle);
 }
+/************************************************************************//**
+  * @brief  relese
+  * @param   
+  * @note    
+  * @retval None
+  ****************************************************************************/
+ void app_laser_prohot_semo(void)
+ {
+   osSemaphoreRelease(prohotBinarySem02Handle);
+ }
+   /************************************************************************//**
+  * @brief laser
+  * @param energe ,能量
+  * @note   能量单位mJ;脉宽100~200us；暂时固定脉宽120us用来调试
+  * @retval  换算后电压100mV
+  *****************************************************************************/
+ unsigned short int  app_laser_1064_energe_to_voltage(unsigned short int energe)
+ {
+   unsigned short int ret_vol; 
+   ret_vol=energe*4.5+300;   
+   if(ret_vol<LASER_980_MIN_ENERGE_MV) ret_vol=LASER_980_MIN_ENERGE_MV;
+   if(ret_vol>LASER_980_MAX_ENERGE_MV) ret_vol=LASER_980_MAX_ENERGE_MV;
+   return ret_vol;
+ }
  /************************************************************************//**
   * @brief  app_motor_run_sta
   * @param  runflag:0stop;1move

@@ -134,11 +134,6 @@ osSemaphoreId_t tecBinarySem01Handle;
 const osSemaphoreAttr_t tecBinarySem01_attributes = {
   .name = "tecBinarySem01"
 };
-/* Definitions for canReceiveBinarySem02 */
-osSemaphoreId_t canReceiveBinarySem02Handle;
-const osSemaphoreAttr_t canReceiveBinarySem02_attributes = {
-  .name = "canReceiveBinarySem02"
-};
 /* Definitions for motorEvent01 */
 osEventFlagsId_t motorEvent01Handle;
 const osEventFlagsAttr_t motorEvent01_attributes = {
@@ -186,9 +181,6 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of tecBinarySem01 */
   tecBinarySem01Handle = osSemaphoreNew(1, 1, &tecBinarySem01_attributes);
-
-  /* creation of canReceiveBinarySem02 */
-  canReceiveBinarySem02Handle = osSemaphoreNew(1, 0, &canReceiveBinarySem02_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -270,8 +262,7 @@ void StartDefaultTask(void *argument)
     DEBUG_PRINTF(" tec_T=%.1f℃",local_disp);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
     DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
-    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",laser_980_sta.real_motor_positon_um);
-    DEBUG_PRINTF("canpac=%d\r\n",can_count);    
+    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",laser_980_sta.real_motor_positon_um);       
     osDelay(1000); 
     HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);    
     app_tec_auto_manage();
@@ -355,16 +346,21 @@ void CANopenTask03(void *argument)
   uint8_t buff[8];
    uint32_t Identifier;
     uint16_t len;
+    uint32_t l980_heart_timeout=osKernelGetTickCount();
   for(;;)
-  {    
-  // if( osSemaphoreAcquire(canReceiveBinarySem02Handle,portMAX_DELAY)==osOK)
-   {
+  {   
     if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
     {  
-      uint8_t packageType = Identifier-CAN_SLAVE_ID;  
-      CAN_receivePackageHandle(buff,packageType);      
+      uint8_t packageType = Identifier-CAN_MASTER_ID;  
+      CAN_receivePackageHandle(buff,packageType);  
+      l980_sta.staByte|=L980_STA_HEART_BIT0;  //heart
+      l980_heart_timeout=osKernelGetTickCount();    
     }
-   }
+    if(osKernelGetTickCount()>l980_heart_timeout+L980_CAN_FRAME_TIMEOUT)
+    {//l980 heart timeout 
+      l980_heart_timeout=osKernelGetTickCount();  
+      memset(&l980_sta,0,sizeof(L980_STATUS));//clear      
+    }     
     osDelay(1);
   }
   /* USER CODE END CANopenTask03 */
@@ -440,18 +436,8 @@ void app_tec_ctr_semo(void)
   osSemaphoreRelease(tecBinarySem01Handle);
 }
  /************************************************************************//**
-  * @brief  app_can_receive_semo
-  * @param   
-  * @note    
-  * @retval None
-  ****************************************************************************/
- void app_can_receive_semo(void)
- {
-   osSemaphoreRelease(canReceiveBinarySem02Handle);
- }
- /************************************************************************//**
   * @brief  app_motor_run_sta
-  * @param   runflag:0stop;1move
+  * @param  runflag:0stop;1move
   * @note    
   * @retval None
   ****************************************************************************/
@@ -476,7 +462,7 @@ void app_tec_auto_manage(void)
     {
       tec_start(volta|0x80,500);
     } 
-    else DEBUG_PRINTF("the tec is running\r\n");
+    else DEBUG_PRINTF("the tec is running\r\n");        
   }
   else if(laser_980_sta.real_laser_temprature>0.2+u_sys_param.sys_config_param.cool_temprature_target*0.1)
   {  

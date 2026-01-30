@@ -177,6 +177,15 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 
+#define SYS_1_SECOND_TICKS    1000//1s
+#define SYS_1_MINUTES_TICK    60000//1 minete
+#define LASER_MAX_CONTINUS_WORK_TIME    5*SYS_1_MINUTES_TICK
+
+#define MAX_PROHOT_WAIT_TIME_S   15*SYS_1_SECOND_TICKS
+
+#define LASER_980_MIN_ENERGE_MV   120//120mV
+#define LASER_980_MAX_ENERGE_MV   1200//1200mV
+
 #ifndef DEBUG_MSG_UART 
 #define DEBUG_MSG_UART  /*use printf*/
 #define DEBUG_PRINTF(fmt, ...) printf(fmt, ##__VA_ARGS__)
