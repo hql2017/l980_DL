@@ -273,7 +273,6 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     HAL_TIM_Encoder_Start(&htim3,TIM_CHANNEL_ALL);         
     HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
     tmc2226_en(1); 
-        
 	}
 }
   /**
@@ -318,6 +317,7 @@ static void app_tmc2226_speed_set(unsigned char spdLevel)
     }
   }
 } 
+extern void app_motor_stop_fresh_status(void);
  /************************************************************************//**
   * @brief  HAL_TIM_OC_DelayElapsedCallback(htim)
   * @param   
@@ -328,7 +328,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(htim->Instance==TIM3)
   {
-    tmc2226_stop(); 
+    app_motor_stop_fresh_status();
     DEBUG_PRINTF("arrive OC=%d \r\n",htim3.Instance->CNT);
   }
 }

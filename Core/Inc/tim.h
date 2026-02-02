@@ -58,7 +58,7 @@ void MX_TIM20_Init(void);
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN Prototypes */
-void app_auxiliary_bulb_pwm(unsigned char lightLevel,FunctionalState flag);
+void app_auxiliary_bulb_pwm(unsigned char duty,FunctionalState flag);
 void tim_triger_ad(TIM_HandleTypeDef *htim);
 /* USER CODE END Prototypes */
 

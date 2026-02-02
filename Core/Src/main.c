@@ -197,7 +197,6 @@ void SystemClock_Config(void)
 #include "tec_control_bsp.h"
 
 
-extern void app_tec_ctr_semo(void);
 /* USER CODE END 4 */
 
 /**
@@ -217,8 +216,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM4) {   
-    tmc2226_stop();
+  if (htim->Instance == TIM4) {         
+    app_motor_stop_fresh_status();
     DEBUG_PRINTF("steps overflow\r\n "); 
   }  
   if(htim->Instance == TIM2) {  

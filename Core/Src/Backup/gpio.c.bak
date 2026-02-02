@@ -163,4 +163,15 @@ void MX_GPIO_Init(void)
    if(flag==0)  HAL_GPIO_WritePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin,GPIO_PIN_RESET);
    else HAL_GPIO_WritePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin,GPIO_PIN_SET);  
  }
+    /************************************************************************//**
+  * @brief app_980_pwr_en
+  * @param  flag-使能信号
+  * @note   激光电源使能 
+  * @retval None
+  ****************************************************************************/
+ void app_980_pwr_en(  FunctionalState flag)
+ {   
+   if(flag==0)  HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_SET);  
+ }
 /* USER CODE END 2 */

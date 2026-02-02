@@ -611,10 +611,10 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
   * @note  推介频率2k GREEN 40<duty>60 : RED 8<duty>30
   * @retval  
   *****************************************************************************/
- void app_auxiliary_bulb_pwm(unsigned char lightLevel,FunctionalState flag)
+ void app_auxiliary_bulb_pwm(unsigned char duty,FunctionalState flag)
  { 
-	unsigned char duty;
-  if(flag==ENABLE&&lightLevel!=0)
+	unsigned char duty_t;
+  if(flag==ENABLE&&duty!=0)
   { 
 		unsigned int timeUs;
 		unsigned short int period;
@@ -624,9 +624,9 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
     period=5000;//
 		//__HAL_TIM_SetAutoreload(&htim8,period-1);//low 10K  50kHz  MAX 400kHz
 		//duty 1%  100%; 0% close
-    if(lightLevel>100) duty=80;//max
-    else  duty=40+lightLevel*2/5;
-		timeUs= period * duty/100;
+    if(duty>100) duty_t=80;//max
+    else  duty_t=40+duty*2/5;
+		timeUs= period * duty_t/100;
 		__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,timeUs-1);
 		HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
   }

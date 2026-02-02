@@ -50,13 +50,16 @@ extern "C" {
 typedef struct
 {  
   unsigned int deviceID;                      //设备ID   
-  unsigned int laser_use_timeS;              //连续激光使用时间S（980脉冲激光运行时间。(MAX,连续49.7天) 
-  unsigned short int cool_temprature_target;  //10倍冷却系统目标温度  (210~280)
-  unsigned short int count_timer_s_set;       //倒计时设置S
-  unsigned short int motor_positon_um_set;    //目标位置(最佳位置)μm(MAX=35000μm)（MOTOR_MAX_UM） 
-  unsigned short int laser_led_light;         //激光指示灯亮度
-  unsigned short int e_cali[40];              //功率校准值(0~5000)
-  unsigned short int e_voltage_mv[40];        //能量控制电压值0~200mJ 档（ dac0~1500mV）
+  unsigned int laser_use_timeS;               //连续激光使用时间S（980脉冲激光运行时间。(MAX,连续49.7天) 
+  //L980_SET_PARAM
+  short int   targetTempratureSet;      //温度值（10倍）
+	unsigned char   auxLedBulbDutySet;    //指示灯占空比
+	unsigned char   auxLedBulbFreqSet;    //指示灯频率
+	unsigned short int    positionSet;    //位置 
+	unsigned short int    timerSet;       //倒计时
+	unsigned short int    energeSet;       //能量值	
+	unsigned short int    energeCaliSet;   //能量校准	
+  unsigned short int e_cali[40];              //功率校准值(0~5000)(5~200mj档位) （40个）
 }__attribute__((packed)) SYS_CONFIG_PARAM ;   //系统配置参数
 typedef union 
 {
@@ -72,26 +75,21 @@ typedef struct
   unsigned char       caliFlag;        //是否校准模式
   unsigned char       l980_active_mode;//光纤激活
   unsigned char       pro_hot;         //准备
-  unsigned char       laser_ctr_JT;    //JT控制激光输出
+  unsigned char       JT_laser_out;    //JT控制激光输出
   unsigned short int  energe;                     //
-  unsigned short int  laserContinuousTimes;        // 倒计时  
+  unsigned short int  laserCountTimerCtr;        // 倒计时  
 }__attribute__((packed)) LASER_CTR_PARAM ;//激光控制参数
 typedef struct
 {    
-  unsigned char laser_prohot_status;
   unsigned char laser_test_ctr_status;               //光纤激活
-  unsigned char laser_980_out_status;
-  unsigned char auxiliary_bulb_staus;
-  unsigned char laser_ctr_JT_status;                 //JT控制信号
   unsigned short int laser_real_energe;              //输出能量反馈
-  unsigned short int real_timers;                    //倒计时
-  unsigned short int real_motor_positon_um;          //当前位置
+  unsigned short int real_timers;                    //倒计时  
   unsigned short int real_photodiod_value;           //光电二极管反馈值 
   unsigned int sys_run_status_value;                 //32 bit
   float real_laser_temprature;          //激光器温度
-  float real_tmc_temprature;            //丝杆电机控制器TMC2226温度
-}__attribute__((packed)) LASER_980_STATUS;//运行状态参数
-extern LASER_980_STATUS laser_980_sta;
+  float real_tmc_temprature;            //丝杆电机控制器TMC2226温度 
+}__attribute__((packed)) HSM_DL_STATUS;//运行状态参数
+extern HSM_DL_STATUS hsm_dl_sta;
 extern LASER_CTR_PARAM  laser_ctr_param;
 /* USER CODE END EM */
 
@@ -99,7 +97,10 @@ extern LASER_CTR_PARAM  laser_ctr_param;
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern void app_motor_move_to_sem(unsigned short int targetPosition);
+extern void app_laser_prohot_semo(void);
+extern void app_tec_ctr_semo(void);
+extern void app_motor_stop_fresh_status(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -185,6 +186,8 @@ void Error_Handler(void);
 
 #define LASER_980_MIN_ENERGE_MV   120//120mV
 #define LASER_980_MAX_ENERGE_MV   1200//1200mV
+
+#define MOTOR_TMC_PROTECT_TEMPRATUR   80.0//电机保护温度
 
 #ifndef DEBUG_MSG_UART 
 #define DEBUG_MSG_UART  /*use printf*/
