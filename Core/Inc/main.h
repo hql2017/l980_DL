@@ -52,14 +52,13 @@ typedef struct
   unsigned int deviceID;                      //设备ID   
   unsigned int laser_use_timeS;               //连续激光使用时间S（980脉冲激光运行时间。(MAX,连续49.7天) 
   //L980_SET_PARAM
-  short int   targetTempratureSet;      //温度值（10倍）
+  unsigned short int   targetTempratureSet;      //温度值（10倍）
 	unsigned char   auxLedBulbDutySet;    //指示灯占空比
 	unsigned char   auxLedBulbFreqSet;    //指示灯频率
 	unsigned short int    positionSet;    //位置 
 	unsigned short int    timerSet;       //倒计时
-	unsigned short int    energeSet;       //能量值	
-	unsigned short int    energeCaliSet;   //能量校准	
-  unsigned short int e_cali[40];              //功率校准值(0~5000)(5~200mj档位) （40个）
+  unsigned short int e_cali[41];              //功率校准值(0~5000)(5~200mj档位) （40个）
+  unsigned  int checkSum;
 }__attribute__((packed)) SYS_CONFIG_PARAM ;   //系统配置参数
 typedef union 
 {
@@ -86,7 +85,6 @@ typedef struct
   unsigned short int real_timers;                    //倒计时  
   unsigned short int real_photodiod_value;           //光电二极管反馈值 
   unsigned int sys_run_status_value;                 //32 bit
-  float real_laser_temprature;          //激光器温度
   float real_tmc_temprature;            //丝杆电机控制器TMC2226温度 
 }__attribute__((packed)) HSM_DL_STATUS;//运行状态参数
 extern HSM_DL_STATUS hsm_dl_sta;

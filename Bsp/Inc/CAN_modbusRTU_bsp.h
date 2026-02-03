@@ -76,10 +76,11 @@ typedef struct {
 }__attribute__((packed)) can_long_package;
 
 typedef struct {	 
-	short int   realtemprature;   			//10倍温度值(-40~150) 
-	unsigned short int    staByte;				//heart; bit1 准备就绪;bit2 脉冲输出;bit3 倒计时 1正在运行;
-	unsigned short int    realPosition;         //实际位置			
+	short int  realtemprature;   			//10倍温度值(-40~150) 
+	unsigned char   staByte;				//heart; bit1 准备就绪;bit2 脉冲输出;bit3 倒计时 1正在运行;
+	unsigned short int    useEnerge;         //运行能量值				
 	unsigned short int    energeFeedback;    	//能量计采集值
+	unsigned short int    realPosition;         //实际位置
 	unsigned  int    laserUseTimeS;   			//激光运行时间
 }__attribute__((packed)) L980_STATUS;			//状态数据
 
@@ -91,13 +92,11 @@ typedef union
 extern U_L980_STATUS  u_s_l980;
 
 typedef struct {	 	
-	short int   targetTempratureSet;      //温度值
+	unsigned short int   targetTempratureSet;      //温度值
 	unsigned char   auxLedBulbDutySet;    //指示灯占空比
 	unsigned char   auxLedBulbFreqSet;    //指示灯频率
 	unsigned short int    positionSet;    //位置 
-	unsigned short int    timerSet;       //倒计时
-	unsigned short int    energeSet;       //能量值	
-	unsigned short int    energeCaliSet;   //能量校准	
+	unsigned short int    timerSet;       //倒计时		
 }__attribute__((packed)) L980_SET_PARAM;
 typedef union 
 {

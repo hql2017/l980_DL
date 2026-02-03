@@ -24,6 +24,7 @@
 #include "dma.h"
 #include "fdcan.h"
 #include "i2c.h"
+#include "iwdg.h"
 #include "usart.h"
 #include "tim.h"
 #include "gpio.h"
@@ -109,8 +110,8 @@ int main(void)
   MX_TIM20_Init();
   MX_USART3_UART_Init();
   MX_TIM4_Init();
-  MX_TIM7_Init();
-  MX_TIM2_Init();
+  MX_IWDG_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   DWT_Init(); 
   char verBuff[19]={0};
@@ -162,8 +163,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV3;
@@ -192,11 +194,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 #include "tmc2226_step_bsp.h"
-#include "tec_control_bsp.h"
-
-
 /* USER CODE END 4 */
 
 /**
@@ -219,13 +217,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM4) {         
     app_motor_stop_fresh_status();
     DEBUG_PRINTF("steps overflow\r\n "); 
-  }  
-  if(htim->Instance == TIM2) {  
-    tec_stop();     
-
-    DEBUG_PRINTF("tec time out\r\n ");
-  }
- 
+  } 
   /* USER CODE END Callback 1 */
 }
 

@@ -146,8 +146,7 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* dacHandle)
      if(outVoltageMv>1500) dac_Value=2048;//MAX 1.5V
      else 
      {
-      //dac_Value=outVoltage*4096/3000;
-      
+      //dac_Value=outVoltage*4096/3000;      
       dac_Value=outVoltageMv*512/375;
      }
        /* 将初始 DAC 值设置为转换值。 */

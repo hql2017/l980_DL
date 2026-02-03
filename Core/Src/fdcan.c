@@ -249,7 +249,7 @@ ErrorStatus FDCAN1_Send_Msg(uint8_t* msg,uint16_t targetID)
   if((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
   {	 
     /* Retrieve Rx messages from RX FIFO0 */    
-   if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
+   if(HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, &fd_canRxBuff[fd_canRxLen]) != HAL_OK)
    {
       Error_Handler();
 		  DEBUG_PRINTF("HAL_FDCAN_GetRxMessage---------------EEROR\n");

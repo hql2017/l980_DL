@@ -13,12 +13,12 @@
 #include "stdlib.h"
 
 #define  TEC_COOL_DIR  0
-/**
-  * @brief tec_pwm_set
-  * @param  void
-  * @note   outVoltage
+  /************************************************************************//**
+  * @brief tec开关
+  * @param  flag-使能信号
+  * @note   0，standby ；1 work
   * @retval None
-  */
+  ****************************************************************************/
  void tec_en(unsigned char flag)
  {
     if(flag==0) HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port, TEC_DRV8701_SLEEP_OUT_Pin, GPIO_PIN_RESET);
@@ -50,7 +50,8 @@
   * @brief tec_pwm_set
   * @param  void
   * @note   outVoltage
-  *         freq:=timer20 1M clock freq
+  *         freq:=timer20 10M clock freq
+  *         pWM freq=100k
   *         duty:1~100
   * @retval None
   */
@@ -59,15 +60,15 @@
 	if(outVoltage!=0)
   {    
 		unsigned int timeUs;
-		unsigned short int period;
-				
+		unsigned short int period;				
     //period=10000000/100000;
 		period=100;
 		__HAL_TIM_SetAutoreload(&htim20,period-1);//freq =100k
 		//duty 1%  100%; 0% close	
     //duty=(outVoltage*100/24)=outVoltage*25/6;
 		//timeUs=period /2;	//duty 50% ,tset
-    timeUs=outVoltage*25/6;
+    //timeUs=outVoltage*25/6;//100/24;
+    timeUs=outVoltage*25/6;//100/24; 
     if(timeUs<1) timeUs=1;
     if(timeUs>100) timeUs=100;
 		__HAL_TIM_SetCompare(&htim20,TIM_CHANNEL_3,timeUs-1);
@@ -94,11 +95,10 @@
       {
         tec_dir(TEC_COOL_DIR);
       }
-      else tec_dir(!TEC_COOL_DIR);
+      else tec_dir(!TEC_COOL_DIR);             
       tec_pwm_set((unsigned short int )(abs(outVoltage)));       
-      HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);
-      __HAL_TIM_SET_AUTORELOAD(&htim2,runtimeMs*10);//htim2 10K
-      HAL_TIM_Base_Start_IT(&htim2);
+      HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);  
+      tec_en(1);
     }    
  }
    /**
@@ -110,7 +110,7 @@
  extern void app_tec_ctr_semo(void);
  void tec_stop(void)
  {
+  tec_en(0);
   HAL_TIM_PWM_Stop(&htim20,TIM_CHANNEL_3);
-  HAL_TIM_Base_Stop_IT(&htim2);
   app_tec_ctr_semo();
  } 

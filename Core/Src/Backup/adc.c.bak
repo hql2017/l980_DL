@@ -72,8 +72,8 @@ void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T7_TRGO;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO2;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_FALLING;
   hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
@@ -161,7 +161,7 @@ void MX_ADC2_Init(void)
   hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.NbrOfConversion = 2;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T7_TRGO;
+  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
   hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc2.Init.DMAContinuousRequests = ENABLE;
   hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
@@ -507,8 +507,10 @@ static  unsigned  short int ad3Buff[MAX_AD3_BUFF_LENGTH];
 static  unsigned  short int advalue[AD_CHANNEL_NUM_MAX];
 
 void app_start_multi_channel_adc(void)
-{   
-  HAL_TIM_Base_Start(&htim7);//trigger
+{  
+  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_2,4000);
+  HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_2);//trigger 
+  HAL_TIM_Base_Start(&htim1);//trigger
   HAL_ADC_Start_DMA(&hadc1,(unsigned int*)ad1Buff,MAX_AD1_BUFF_LENGTH);  
   HAL_ADC_Start_DMA(&hadc2,(unsigned int*)ad2Buff,MAX_AD2_BUFF_LENGTH);  
 }

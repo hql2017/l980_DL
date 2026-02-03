@@ -129,30 +129,8 @@ void MX_GPIO_Init(void)
    if(flag==DISABLE)  HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_RESET);
    else HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_SET);  
  }
-  /************************************************************************//**
-  * @brief tec开关
-  * @param  flag-使能信号
-  * @note   0，standby ；1 work
-  * @retval None
-  ****************************************************************************/
- void app_tec_switch( FunctionalState flag)
- {   
-   if(flag==DISABLE)  HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port,TEC_DRV8701_SLEEP_OUT_Pin,GPIO_PIN_RESET);
-   else HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port,TEC_DRV8701_SLEEP_OUT_Pin,GPIO_PIN_SET);  
- }
 
-  /************************************************************************//**
-  * @brief tec运行模式
-  * @param  flag-使能信号
-  * @note   0，cool ；1 hot
-  * @retval None
-  ****************************************************************************/
- void app_tec_run_mode( unsigned char runMode)
- {   
-   if(runMode==0)  HAL_GPIO_WritePin(TEC_DRV8701_PHASE_CTR_OUT_GPIO_Port,TEC_DRV8701_PHASE_CTR_OUT_Pin,GPIO_PIN_RESET);
-   else HAL_GPIO_WritePin(TEC_DRV8701_PHASE_CTR_OUT_GPIO_Port,TEC_DRV8701_PHASE_CTR_OUT_Pin,GPIO_PIN_SET);  
- }
-   /************************************************************************//**
+/************************************************************************//**
   * @brief mcu_sysLED运行模式
   * @param  flag-使能信号
   * @note   0，cool ；1 hot
