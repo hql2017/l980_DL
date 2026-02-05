@@ -12,5 +12,6 @@ extern  void laserProhotTask05(void *argument);
 
 extern void laserWorkTimerCallback01(void *argument);
 extern void tecRunCallback02(void *argument);
+extern void secondsHeartCallback03(void *argument);
 
 extern  void MX_FREERTOS_Init(void);

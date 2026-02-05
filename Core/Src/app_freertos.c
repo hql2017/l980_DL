@@ -149,6 +149,11 @@ osTimerId_t tecRunTimer02Handle;
 const osTimerAttr_t tecRunTimer02_attributes = {
   .name = "tecRunTimer02"
 };
+/* Definitions for secondsHeartTimer03 */
+osTimerId_t secondsHeartTimer03Handle;
+const osTimerAttr_t secondsHeartTimer03_attributes = {
+  .name = "secondsHeartTimer03"
+};
 /* Definitions for motorMutex01 */
 osMutexId_t motorMutex01Handle;
 const osMutexAttr_t motorMutex01_attributes = {
@@ -198,6 +203,7 @@ unsigned short int  app_laser_980_energe_to_voltage(unsigned short int energe);
 void app_motor_err_handle(osStatus_t errSta);
 void app_laser_prohot_semo(void);
 void app_sys_param_load(void);
+unsigned char app_sys_param_save_data(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -207,6 +213,7 @@ void laserWorkTask04(void *argument);
 void laserProhotTask05(void *argument);
 void laserWorkTimerCallback01(void *argument);
 void tecRunCallback02(void *argument);
+void secondsHeartCallback03(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -269,6 +276,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of tecRunTimer02 */
   tecRunTimer02Handle = osTimerNew(tecRunCallback02, osTimerOnce, NULL, &tecRunTimer02_attributes);
+
+  /* creation of secondsHeartTimer03 */
+  secondsHeartTimer03Handle = osTimerNew(secondsHeartCallback03, osTimerPeriodic, NULL, &secondsHeartTimer03_attributes);
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
@@ -338,13 +348,30 @@ void StartDefaultTask(void *argument)
   EEPROM_M24C32_init();
   app_sys_param_load();
   float local_disp; 
+  osDelay(1000); 
   for(;;)
   { 
-    
-    app_get_adc_value(AD1_CH1_IBUS,&local_disp);
-    DEBUG_PRINTF("AD:iBus=%.1fmA",local_disp);    
-    app_get_adc_value(AD1_CH2_VBUS,&local_disp);
-    DEBUG_PRINTF(" vBus=%.2fV",local_disp*0.001);    
+    app_get_adc_value(AD1_CH1_IBUS,&hsm_dl_sta.real_ibus);
+    DEBUG_PRINTF("AD:iBus=%.1fmA",hsm_dl_sta.real_ibus);    
+    app_get_adc_value(AD1_CH2_VBUS,&hsm_dl_sta.real_Vbus);  
+    if(hsm_dl_sta.real_Vbus<10.00) 
+    {
+      DEBUG_PRINTF(" low voltage,wait iwdg reset !");
+      app_980_pwr_en(DISABLE);
+      app_dac_out(0);
+      if( app_sys_param_save_data()==0)
+      {
+        DEBUG_PRINTF("param SAVE ok!"); 
+      }
+      else DEBUG_PRINTF("param SAVE fail!");
+      while(hsm_dl_sta.real_Vbus<10)
+      {
+        app_get_adc_value(AD1_CH2_VBUS,&hsm_dl_sta.real_Vbus);
+        DEBUG_PRINTF("voltage low !=%.2fv\r\n",hsm_dl_sta.real_Vbus);
+        HAL_Delay(1000);
+      }
+    }
+    DEBUG_PRINTF(" vBus=%.2fV",hsm_dl_sta.real_Vbus); 
     app_get_adc_value(AD1_CH3_I_TEC,&local_disp);    
     DEBUG_PRINTF(" i_TEC=%.1f",local_disp);  
     app_get_adc_value(AD2_CH3_NTC_MOTOR_TEMPRATURE,&local_disp);  
@@ -357,8 +384,7 @@ void StartDefaultTask(void *argument)
     }
     else osEventFlagsSet(motorEvent01Handle, EVENTS_MOTOR_TEMPRATURE_BIT2);
     DEBUG_PRINTF(" motor_T=%.2f℃",hsm_dl_sta.real_tmc_temprature);  
-    app_get_adc_value(AD2_CH4_TEC_TEMPRATURE,&local_disp);
-    //u_s_l980.sta.realtemprature=( short int )(local_disp*10);
+    app_get_adc_value(AD2_CH4_TEC_TEMPRATURE,&local_disp);    
     u_s_l980.sta.realtemprature=( short int )(local_disp*10);
     u_sys_param.sys_config_param.targetTempratureSet=240;
     DEBUG_PRINTF(" laser_tec_T=%.1f℃ target=%d",u_s_l980.sta.realtemprature*0.1,u_sys_param.sys_config_param.targetTempratureSet);     
@@ -426,7 +452,7 @@ void motorTask02(void *argument)
             }while((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1);
             DEBUG_PRINTF("motor move to=%dμm \r\n",app_get_motor_real_position());
             osMutexRelease(motorMutex01Handle);
-          }
+          }          
         }
       }      
     }
@@ -479,7 +505,8 @@ void motorTask02(void *argument)
                 DEBUG_PRINTF("MOTOR error timeout !stop =%dμm\r\n",app_get_motor_real_position());
                 break;
               }
-            }while((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1);           
+            }while((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1);
+            osDelay(1000);           
             app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_UM,3);
             timeOut=0;
             do
@@ -532,7 +559,7 @@ void CANopenTask03(void *argument)
     osDelay(5);
     if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
     {  
-      uint8_t packageType = Identifier-CAN_MASTER_ID;  
+      uint8_t packageType = Identifier&0x01;  
       CAN_receivePackageHandle(buff,packageType);  
       u_s_l980.sta.staByte|=L980_STA_HEART_BIT0;  //heart
       l980_heart_timeout=0;  
@@ -545,19 +572,30 @@ void CANopenTask03(void *argument)
     else
     {
       l980_heart_timeout+=5;
-      if(l980_heart_timeout>0)
+      if(l980_heart_timeout>L980_CAN_FRAME_TIMEOUT)
       {//l980 heart timeout 
-        l980_heart_timeout=0;  
-      // memset(&u_s_l980.sta,0,sizeof(L980_STATUS));//clear 
-        u_s_l980.sta.staByte&=(~L980_STA_HEART_BIT0);
-        if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1) 
+        l980_heart_timeout=0; 
+        if(u_s_l980.sta.reserveByte==0)
         {
-          if (laser_ctr_param.pro_hot!=0)
+          u_s_l980.sta.staByte&=(~L980_STA_HEART_BIT0);
+          if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1) 
           {
-            laser_ctr_param.pro_hot=0;         
-            osSemaphoreRelease(laserCloseBinarySem03Handle);         
-          }
-        }    
+            if(laser_ctr_param.pro_hot!=0)
+            {
+              DEBUG_PRINTF("CAN-disconnect!exit prohot");
+              laser_ctr_param.pro_hot=0;      
+              osSemaphoreRelease(laserCloseBinarySem03Handle);
+            } 
+            else 
+            {
+              u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);
+            }
+          }  
+        } 
+        else 
+        {
+          u_s_l980.sta.staByte|=L980_STA_HEART_BIT0;
+        } 
       }     
     }
   }
@@ -576,7 +614,6 @@ void laserWorkTask04(void *argument)
   /* USER CODE BEGIN laserWorkTask04 */
   /* Infinite loop */
   unsigned int timeout ;
-  unsigned int laserWorkTime=0 ;
   for(;;)
   {
     uint32_t laser_event=osEventFlagsWait(laserEvent02Handle,osFlagsWaitAll|osFlagsNoClear,EVENTS_LASER_OK_ALL_BITS_MASK,portMAX_DELAY);
@@ -591,8 +628,7 @@ void laserWorkTask04(void *argument)
       osStatus_t m_sta= osMutexAcquire(motorMutex01Handle,MOTOR_MOVE_ERROR_TIMEOUT_S); 
       unsigned int motor_events=osEventFlagsGet(motorEvent01Handle); 
       if(m_sta==osOK)
-      {
-        DEBUG_PRINTF("motor return zero...\r\n");            
+      {       
         app_motor_slide_position(MOTOR_DIR_ZERO,0,3);
         motor_events=osEventFlagsGet(motorEvent01Handle); 
         timeout=0;
@@ -608,41 +644,31 @@ void laserWorkTask04(void *argument)
             DEBUG_PRINTF("MOTOR error timeout !stop =%dμm\r\n",app_get_motor_real_position());
             break;
           }         
-        }while((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)!=EVENTS_MOTOR_OK_ALL_BITS_MASK); 
-        if((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)==EVENTS_MOTOR_OK_ALL_BITS_MASK)  
+        }while((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)!=EVENTS_MOTOR_OK_ALL_BITS_MASK);
+        if((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)!=EVENTS_MOTOR_OK_ALL_BITS_MASK)  
         {
-          osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-        }
+          u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;        
+          DEBUG_PRINTF("motor error! \r\n"); 
+        } 
         osMutexRelease(motorMutex01Handle);
       } 
-      else
-      {
-        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-        osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
-        u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-        u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
-        DEBUG_PRINTF("motor error! \r\n"); 
-      } 
-      if((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)==EVENTS_MOTOR_OK_ALL_BITS_MASK)
-      {
-        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-      }  
+      osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
+      osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
+      osTimerStop(secondsHeartTimer03Handle);
       osTimerStop(laserWorkTimer01Handle);
       u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);   
+      //u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
       DEBUG_PRINTF("l980 exit prohot \r\n");
     }    
     if(laser_ctr_param.JT_laser_out!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1))
     {
       if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)!=L980_STA_PULSEOUT_BIT2)
       { 
-        laserWorkTime=osKernelGetTickCount();
-        if(laser_ctr_param.laserCountTimerCtr!=0&&u_l980.set_param.timerSet!=0)
+        osTimerStart(secondsHeartTimer03Handle,SYS_1_SECOND_TICKS);
+        if(u_l980.set_param.timerSet>0&&(u_s_l980.sta.staByte&L980_STA_TIMERS_BIT3)!=L980_STA_TIMERS_BIT3)
         {
-          if((u_s_l980.sta.staByte&L980_STA_TIMERS_BIT3)!=L980_STA_TIMERS_BIT3) 
-          {
-            u_s_l980.sta.staByte|=L980_STA_TIMERS_BIT3;
-            osTimerStart(laserWorkTimer01Handle,u_l980.set_param.timerSet); 
-          }
+          u_s_l980.sta.staByte|=L980_STA_TIMERS_BIT3;
+          osTimerStart(laserWorkTimer01Handle,u_l980.set_param.timerSet); 
         }        
         app_980_pwr_en(ENABLE);   
         u_s_l980.sta.staByte|=L980_STA_PULSEOUT_BIT2;
@@ -650,12 +676,9 @@ void laserWorkTask04(void *argument)
       }  
       else 
       {
-        if(osKernelGetTickCount()>laserWorkTime+1000)
-        {
-          laserWorkTime=osKernelGetTickCount();
-          u_sys_param.sys_config_param.laser_use_timeS++;
-          u_s_l980.sta.laserUseTimeS=u_sys_param.sys_config_param.laser_use_timeS;
-        }        
+        //光电管
+        DEBUG_PRINTF("energe%d \r\n",u_s_l980.sta.energeFeedback);
+        //1s  
       }    
     }
     else 
@@ -663,6 +686,7 @@ void laserWorkTask04(void *argument)
       if(laser_ctr_param.JT_laser_out==0) 
       {
         osTimerStop(laserWorkTimer01Handle);
+        osTimerStop(secondsHeartTimer03Handle);
         u_s_l980.sta.staByte&=(~L980_STA_TIMERS_BIT3);
         if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)==L980_STA_PULSEOUT_BIT2) 
         {
@@ -694,21 +718,18 @@ void laserProhotTask05(void *argument)
   {
     osSemaphoreAcquire(prohotBinarySem02Handle,portMAX_DELAY);
     local_prohot=laser_ctr_param.pro_hot;
-    if(local_prohot!=0)
+    if(local_prohot!=0&&(u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)!=L980_STA_PROHOT_BIT1)
     {  
       //temprature 
-      
       //laser_ctr_param.energe=u_l980.set_param.energeSet+u_l980.set_param.energeCaliSet;laser_ctr_param.energe=u_l980.set_param.energeSet;
-      unsigned short int dac_voltage= app_laser_980_energe_to_voltage(laser_ctr_param.energe);
-      app_dac_out(dac_voltage); 
-      osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);
       //position       
+      unsigned int motor_events=osEventFlagsGet(motorEvent01Handle); 
       osStatus_t m_sta= osMutexAcquire(motorMutex01Handle,MOTOR_MOVE_ERROR_TIMEOUT_S); 
       if(m_sta==osOK)
       {
-        DEBUG_PRINTF("motor move to=%dμm \r\n",u_l980.set_param.positionSet);            
+        DEBUG_PRINTF("prohot motor move to=%dμm \r\n",u_l980.set_param.positionSet);            
         app_motor_slide_position(MOTOR_DIR_FORWARD,u_l980.set_param.positionSet,3);
-        unsigned int motor_events=osEventFlagsGet(motorEvent01Handle); 
+        motor_events=osEventFlagsGet(motorEvent01Handle); 
         timeout=0;
         do
         {
@@ -717,41 +738,47 @@ void laserProhotTask05(void *argument)
           if(timeout>MOTOR_MOVE_ERROR_TIMEOUT_S)
           {
             app_motor_err_handle(osErrorTimeout);             
-            osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-            app_dac_out(0);
-            osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);                    
-            u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);            
-            DEBUG_PRINTF("MOTOR error timeout! prohot fail\r\n"); 
             break;
           }
           motor_events=osEventFlagsGet(motorEvent01Handle);          
         }while((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)!=EVENTS_MOTOR_OK_ALL_BITS_MASK); 
         if((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)==EVENTS_MOTOR_OK_ALL_BITS_MASK)  
         {
+          u_s_l980.sta.staByte&=(~L980_ERR_MOTOR_BIT7);
           if(u_l980.set_param.positionSet==u_s_l980.sta.realPosition)  
           {
             osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
+            unsigned short int dac_voltage = app_laser_980_energe_to_voltage(u_s_l980.sta.useEnerge)+u_sys_param.sys_config_param.e_cali[u_s_l980.sta.useEnerge/5];
+            app_dac_out(u_s_l980.sta.dacValue);            
+            osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);
           }
         }
+        else
+        { 
+          osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1); 
+          u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
+        }
         osMutexRelease(motorMutex01Handle);
-      } 
-      else
-      {
-        osEventFlagsSet(motorEvent01Handle,EVENTS_MOTOR_IDLE_BIT1);
-        u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-        u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
-        DEBUG_PRINTF("motor error! prohot fail\r\n"); 
-      } 
-      uint32_t laser_event=osEventFlagsGet(laserEvent02Handle);  
+      }       
+      uint32_t laser_event=osEventFlagsGet(laserEvent02Handle);
       if((laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)==EVENTS_LASER_OK_ALL_BITS_MASK)
       {
         u_s_l980.sta.staByte|=L980_STA_PROHOT_BIT1;
         DEBUG_PRINTF("l9890 prohot success\r\n");
-      }      
+      }   
+      else 
+      {      
+        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
+        app_dac_out(0);
+        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);                    
+        u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);  
+       // u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
+        DEBUG_PRINTF(" prohot fail\r\n"); 
+      }   
     }
     else 
     {
-      if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)  osSemaphoreRelease(laserCloseBinarySem03Handle);
+      if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1&&local_prohot==0)  osSemaphoreRelease(laserCloseBinarySem03Handle);
     }
     osDelay(1);
   }
@@ -762,7 +789,7 @@ void laserProhotTask05(void *argument)
 void laserWorkTimerCallback01(void *argument)
 {
   /* USER CODE BEGIN laserWorkTimerCallback01 */
-  if(laser_ctr_param.laserCountTimerCtr!=0)
+  if(u_l980.set_param.timerSet>0)
   {
     app_980_pwr_en(DISABLE);
     u_s_l980.sta.staByte&=(~(L980_STA_TIMERS_BIT3|L980_STA_PULSEOUT_BIT2)); 
@@ -776,6 +803,18 @@ void tecRunCallback02(void *argument)
   /* USER CODE BEGIN tecRunCallback02 */
   tec_stop();
   /* USER CODE END tecRunCallback02 */
+}
+
+/* secondsHeartCallback03 function */
+void secondsHeartCallback03(void *argument)
+{
+  /* USER CODE BEGIN secondsHeartCallback03 */
+  if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)==L980_STA_PULSEOUT_BIT2)
+  {
+    u_sys_param.sys_config_param.laser_use_timeS++;
+    u_s_l980.sta.laserUseTimeS=u_sys_param.sys_config_param.laser_use_timeS;
+  }  
+  /* USER CODE END secondsHeartCallback03 */
 }
 
 /* Private application code --------------------------------------------------*/
@@ -898,8 +937,7 @@ void app_tec_ctr_semo(void)
   {
     osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, 1);
     DEBUG_PRINTF("980 motor move to =%dμm\r\n",targetPosition); 
-  } 
-    
+  }     
  }
 /************************************************************************//**
 * @brief  app_tec_auto_manage
@@ -910,34 +948,39 @@ void app_tec_ctr_semo(void)
 ****************************************************************************/
 void app_tec_auto_manage(void)
 {
-  int volta;    
-  u_s_l980.sta.realtemprature=(unsigned short int )hsm_dl_sta.real_tmc_temprature*10;
-  DEBUG_PRINTF("T=%d",u_s_l980.sta.realtemprature); 
-  if(HAL_GPIO_ReadPin(TEC_DRV8701_ERROR_IN_GPIO_Port,TEC_DRV8701_ERROR_IN_Pin)==GPIO_PIN_SET)
-  {
+  int volta;   
+  if(u_s_l980.sta.realtemprature<-400||u_s_l980.sta.realtemprature>1500)
+  {//error
     osEventFlagsSet(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
   }
-  else osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
+  else 
+  {
+    if(HAL_GPIO_ReadPin(TEC_DRV8701_ERROR_IN_GPIO_Port,TEC_DRV8701_ERROR_IN_Pin)==GPIO_PIN_SET)
+    {
+      osEventFlagsSet(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
+    }
+    else  osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
+  }
   uint32_t tec_evnet = osEventFlagsGet(tecEvent04Handle);  
-  if(u_s_l980.sta.realtemprature+2>240)//u_sys_param.sys_config_param.targetTempratureSet*0.1)
+  if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+8)//>0.8
   {
     volta = -20;
     if(tec_evnet==EVENTS_TEC_OK_ALL_BITS_MASK)
     {
       osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
-      osTimerStart(tecRunTimer02Handle,500);      
-     // tec_start(volta,500);
+      osTimerStart(tecRunTimer02Handle,500);  
+      if( u_s_l980.sta.tec_switch !=0)  tec_start(volta,200);
     } 
     else DEBUG_PRINTF("the tec is running\r\n");        
   }
-  else if(u_s_l980.sta.realtemprature+2<240)//u_sys_param.sys_config_param.targetTempratureSet*0.1)
+  else if(u_s_l980.sta.realtemprature+1<u_sys_param.sys_config_param.targetTempratureSet)//<-0.1
   {  
     volta = 20;    
     if(tec_evnet==EVENTS_TEC_OK_ALL_BITS_MASK)
     {
       osTimerStart(tecRunTimer02Handle,500);
       osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
-      //tec_start(volta,500);
+      if( u_s_l980.sta.tec_switch !=0)  tec_start(volta,500);
     } 
     else DEBUG_PRINTF("the tec is running\r\n");   
   }  
@@ -994,10 +1037,10 @@ void app_tec_auto_manage(void)
     u_sys_param.sys_config_param.auxLedBulbDutySet=20;
     u_sys_param.sys_config_param.auxLedBulbFreqSet=10;//10k
     u_sys_param.sys_config_param.positionSet=15000;
-    u_sys_param.sys_config_param.timerSet=180;
+    u_sys_param.sys_config_param.laTimerSet=180;
     for(unsigned short int i=0;i<41;i++)
     {
-    u_sys_param.sys_config_param.e_cali[i]=25000;
+      u_sys_param.sys_config_param.e_cali[i]=25000;
     }
     u_sys_param.sys_config_param.checkSum=sumCheck(u_sys_param.data,sizeof(SYS_CONFIG_PARAM)-4);
     memcpy(u_sys_default_param.data,u_sys_param.data,sizeof(SYS_CONFIG_PARAM));
@@ -1051,5 +1094,6 @@ void app_tec_auto_manage(void)
      }		  
      return flag;
   }
+
 /* USER CODE END Application */
 

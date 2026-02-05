@@ -225,8 +225,8 @@ void MX_ADC3_Init(void)
   hadc3.Init.ContinuousConvMode = DISABLE;
   hadc3.Init.NbrOfConversion = 1;
   hadc3.Init.DiscontinuousConvMode = DISABLE;
-  hadc3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc3.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T15_TRGO;
+  hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
   hadc3.Init.DMAContinuousRequests = ENABLE;
   hadc3.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc3.Init.OversamplingMode = DISABLE;
@@ -508,12 +508,20 @@ static  unsigned  short int advalue[AD_CHANNEL_NUM_MAX];
 
 void app_start_multi_channel_adc(void)
 {  
-  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_2,4000);
-  HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_2);//trigger 
+  #if 1
+  //调采集频率() timeMs=count*0.01ms
+  __HAL_TIM_SetAutoreload(&htim1,2999);//30ms
+  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,1499);//30ms
+  #endif
   HAL_TIM_Base_Start(&htim1);//trigger
   HAL_ADC_Start_DMA(&hadc1,(unsigned int*)ad1Buff,MAX_AD1_BUFF_LENGTH);  
-  HAL_ADC_Start_DMA(&hadc2,(unsigned int*)ad2Buff,MAX_AD2_BUFF_LENGTH);  
+  HAL_ADC_Start_DMA(&hadc2,(unsigned int*)ad2Buff,MAX_AD2_BUFF_LENGTH); 
+  //energe 
+  __HAL_TIM_SetAutoreload(&htim15,1999);//20ms 
+  HAL_TIM_Base_Start(&htim15);//trigger
+  HAL_ADC_Start_DMA(&hadc3,(unsigned int*)ad3Buff,MAX_AD3_BUFF_LENGTH); 
 }
+
 /**
   * @brief filter
   * @param void
@@ -641,7 +649,7 @@ void app_get_adc_value(unsigned char adChannel,float *vBuff)
   else if(adChannel==AD1_CH2_VBUS)
   {
     temp=((advalue[AD1_CH2_VBUS]*AD_VREF_VOLTAGE)>>12)*11;
-    *vBuff=temp*1.00840;
+    *vBuff=temp*0.00100840;//V//1.00840;//mV
    //DEBUG_PRINTF("vBus=%dmV ad=%d\r\n", temp,advalue[AD1_CH2_VBUS]);
   }
   else if(adChannel==AD1_CH3_I_TEC)

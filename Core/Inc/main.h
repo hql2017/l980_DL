@@ -52,12 +52,12 @@ typedef struct
   unsigned int deviceID;                      //设备ID   
   unsigned int laser_use_timeS;               //连续激光使用时间S（980脉冲激光运行时间。(MAX,连续49.7天) 
   //L980_SET_PARAM
-  unsigned short int   targetTempratureSet;      //温度值（10倍）
+   short int   targetTempratureSet;      //温度值（10倍）
 	unsigned char   auxLedBulbDutySet;    //指示灯占空比
 	unsigned char   auxLedBulbFreqSet;    //指示灯频率
 	unsigned short int    positionSet;    //位置 
-	unsigned short int    timerSet;       //倒计时
-  unsigned short int e_cali[41];              //功率校准值(0~5000)(5~200mj档位) （40个）
+	unsigned short int    laTimerSet;       //倒计时
+  unsigned short int e_cali[41];              //dac校准值(0~5000)(5~200mj档位) （40个）
   unsigned  int checkSum;
 }__attribute__((packed)) SYS_CONFIG_PARAM ;   //系统配置参数
 typedef union 
@@ -74,18 +74,18 @@ typedef struct
   unsigned char       caliFlag;        //是否校准模式
   unsigned char       l980_active_mode;//光纤激活
   unsigned char       pro_hot;         //准备
-  unsigned char       JT_laser_out;    //JT控制激光输出
-  unsigned short int  energe;                     //
-  unsigned short int  laserCountTimerCtr;        // 倒计时  
+  unsigned char       JT_laser_out;    //JT控制激光输出                //
+  unsigned short int        motor_active;//电机运行状态L980_MAX_MOTOR_DISTANCE_UM,找0，==0 停止
 }__attribute__((packed)) LASER_CTR_PARAM ;//激光控制参数
 typedef struct
 {    
-  unsigned char laser_test_ctr_status;               //光纤激活
-  unsigned short int laser_real_energe;              //输出能量反馈
-  unsigned short int real_timers;                    //倒计时  
+  unsigned char laser_test_ctr_status;               //光纤激活 
+  unsigned short int laser_real_energe;              //输出能量反馈    
   unsigned short int real_photodiod_value;           //光电二极管反馈值 
   unsigned int sys_run_status_value;                 //32 bit
   float real_tmc_temprature;            //丝杆电机控制器TMC2226温度 
+  float real_Vbus;            //电压
+  float real_ibus;            //电流
 }__attribute__((packed)) HSM_DL_STATUS;//运行状态参数
 extern HSM_DL_STATUS hsm_dl_sta;
 extern LASER_CTR_PARAM  laser_ctr_param;
@@ -205,8 +205,8 @@ extern void app_motor_stop_fresh_status(void);
  * receive_ID(filter)：CAN_MASTER_ID+FUNCTIONCODE(0x050~0x055)
  * transmit_ID：CAN_MASTER_ID+FUNCTIONCODE (0x080~0x085)
  */
-#define  CAN_MASTER_ID   0x050//start ID 
-#define  CAN_SLAVE_ID    0x080//start ID
+#define  CAN_MASTER_ID   0x080//start ID 
+#define  CAN_SLAVE_ID    0x050//start ID
 #else
 #define CANOPEN_USED
 #endif

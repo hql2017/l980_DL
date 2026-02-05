@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h> 
+#include "stdlib.h"
 
 #include "CAN_modbusRTU_bsp.h"
 #include "fdcan.h"
@@ -55,20 +56,22 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
   ****************************************************************************/
  void CAN_r_w_ack(unsigned char reg,unsigned char dataLen,unsigned char *data)
  {
-  unsigned char sendBuff[128],packNum,len;  
+    unsigned char sendBuff[128],packNum,len;  
     len= dataLen  +4;
     if(len>128)  return ;   
-    sendBuff[0]=reg|L980_REG_WRITE_MASK; 
+    sendBuff[0]=reg; 
     sendBuff[1]=dataLen;
     memcpy(&sendBuff[2],data,dataLen);
     sendBuff[dataLen+3]=(CAN_crc16Num(sendBuff,dataLen+2)>>8)&0xFF;
     sendBuff[dataLen+4]=CAN_crc16Num(sendBuff,dataLen+2)&0xFF;
     if(dataLen>4)
     {
-      packNum=(len)>>3;///8;
-      if((len)%8!=0)
+      packNum=(len)/6;
+      unsigned char t_len=(len)%6;
+      if(t_len!=0)
       {
-        packNum+=1;      
+        packNum+=1; 
+        memset(&sendBuff[packNum*6-6+t_len] ,0 ,6-t_len );//剩余补0
       }
       CAN_RTU_transmitPackage(RTU_CODE_LONG_BYTES_PACKAGE,packNum,sendBuff);
     }
@@ -117,7 +120,6 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
  {
 
  }
-
   /************************************************************************//**
   * @brief  L980_appReadAck
   * @param    
@@ -129,13 +131,13 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
     unsigned char transmitBuff[8];
     switch(reg)
     {   
-      case L980_REG_HEART_STATUS:          
+      case L980_REG_HEART_STATUS:                  
           CAN_r_w_ack(reg,sizeof(L980_STATUS),u_s_l980.data);
         break;
       case L980_REG_PULSE_COUNT_AND_TIME:  
           CAN_r_w_ack(reg,4,(unsigned char *)&u_s_l980.sta.laserUseTimeS);
         break;
-      case L980_REG_ENERGE_PARAM:
+      case L980_REG_ENERGE_CALI_PARAM:
         {  
           unsigned short int num=(u_s_l980.sta.useEnerge/5);
           num%=41;
@@ -153,32 +155,27 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
         break;   
       case L980_REG_MOTOR_POSITION: 
             transmitBuff[0]= u_l980.set_param.positionSet&0xFF;
-            transmitBuff[1]=(u_l980.set_param.positionSet>>8)&0xFF;   
-            if(u_s_l980.sta.realPosition==u_l980.set_param.positionSet) 
-            {
-              transmitBuff[2]=0;//电机运行状态
-              transmitBuff[3]=0;  
-            }                  
-            else 
-            {
-              transmitBuff[2]=u_s_l980.sta.realPosition&0xFF;//电机运行状态
-              transmitBuff[3]=(u_s_l980.sta.realPosition>>8)&0xFF;; 
-            }
+            transmitBuff[1]=(u_l980.set_param.positionSet>>8)&0xFF; 
+            transmitBuff[2]=u_s_l980.sta.realPosition&0xFF;//电机实时位置
+            transmitBuff[3]=(u_s_l980.sta.realPosition>>8)&0xFF;            
             CAN_r_w_ack(reg,4,transmitBuff);      
         break;
       case L980_REG_LASER_TEMPRATURE: 
-            CAN_r_w_ack(reg,2,(unsigned char *)&u_l980.set_param.positionSet);
+            CAN_r_w_ack(reg,2,(unsigned char *)&u_l980.set_param.targetTempratureSet);
         break;
-      case L980_REG_COUNTDOWN_TIMERS:           
-            transmitBuff[0]=(u_s_l980.sta.staByte&L980_STA_TIMERS_BIT3)>>3; 
-            transmitBuff[1]=0;
-            transmitBuff[2]= u_l980.set_param.timerSet&0xFF;
-            transmitBuff[3]=( u_l980.set_param.timerSet>>8)&0xFF;
-            CAN_r_w_ack(reg,4,transmitBuff);
+      case L980_REG_COUNTDOWN_TIMERS:             
+            transmitBuff[0]= u_l980.set_param.timerSet&0xFF;
+            transmitBuff[1]=( u_l980.set_param.timerSet>>8)&0xFF;
+            CAN_r_w_ack(reg,2,transmitBuff);
         break;
       case L980_REG_SYNC_CONFIG:     
           CAN_r_w_ack(reg,sizeof(L980_SET_PARAM),u_l980.data);         
-        break;        
+        break; 
+        case L980_REG_TEC_CTR:          
+         // transmitBuff[0]= u_s_l980.sta.tec_switch&0xFF;
+         // transmitBuff[1]=( u_s_l980.sta.tec_switch>>8)&0xFF;
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, (unsigned char *)&u_s_l980.sta.tec_switch);
+    break;       
       default:
         break;
     }
@@ -194,91 +191,123 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
   unsigned char transmitBuff[8];
   switch(reg)
   {
-    case L980_REG_ENERGE_PARAM:  
+    case L980_REG_ENERGE_CALI_PARAM:  
         {  
           unsigned short int num=(u_s_l980.sta.useEnerge/5);
           num%=41;
           u_s_l980.sta.useEnerge=(data[1]<<8)|data[0];
           u_sys_param.sys_config_param.e_cali[num]=(data[3]<<8)|data[2];              
           DEBUG_PRINTF("energe Set OK=%dmj cli=%d\r\n",u_s_l980.sta.useEnerge,u_sys_param.sys_config_param.e_cali[num]);         
-          CAN_r_w_ack(reg,4,data);
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,4,data);
         }
       break;  
-    case L980_REG_CTR_PRO_HOT:   
-          if(data[0]==1)
-          {
-            u_s_l980.sta.useEnerge=(data[3]<<8)|data[2];
-            laser_ctr_param.pro_hot=1;
-            DEBUG_PRINTF("980 prohot energe=%d\r\n", u_s_l980.sta.useEnerge);           
-          }
-          else
-          {  
-            laser_ctr_param.pro_hot=0;
-            DEBUG_PRINTF("980 prohot close,wait status fresh\r\n");
-          } 
-          app_laser_prohot_semo();    
-          CAN_r_w_ack(reg,4,data);
+    case L980_REG_CTR_PRO_HOT: 
+        u_s_l980.sta.useEnerge=(data[1]<<8)|data[0];
+        u_s_l980.sta.dacValue=(data[3]<<8)|data[2];
+        if(u_s_l980.sta.dacValue>0)
+        {
+          laser_ctr_param.pro_hot=1;
+          DEBUG_PRINTF("980 prohot energe=%d DAC=%d\r\n", u_s_l980.sta.useEnerge,u_s_l980.sta.dacValue); 
+        }
+        else
+        {
+          laser_ctr_param.pro_hot=0;
+          DEBUG_PRINTF("980 exit prohot finish ,wait status fresh\r\n");
+        }
+        app_laser_prohot_semo();    
+        CAN_r_w_ack(reg|L980_REG_WRITE_MASK,4,data);
       break;    
     case L980_REG_JT_CTR_STOP:
-          if(data[0]==1)
-          {          
+          if(data[0]!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1))
+          {     
             laser_ctr_param.JT_laser_out=1;
+            transmitBuff[0]=1;
+            transmitBuff[1]=0;
             DEBUG_PRINTF("980 pulse out \r\n"); 
-          }
-          else
+          }  
+          else 
           {
             laser_ctr_param.JT_laser_out=0;
-            DEBUG_PRINTF("980 stop pulse out  \r\n");  
-          }  
-          CAN_r_w_ack(reg,2,data);
+            transmitBuff[0]=0;
+            transmitBuff[0]=0;
+            DEBUG_PRINTF("980 pusle stop\r\n");  
+          }
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2,transmitBuff);          
       break;
     case L980_REG_PULSE_COUNT_AND_TIME:
            u_sys_param.sys_config_param.laser_use_timeS=(data[3]<<24)|(data[2]<<16)|(data[1]<<8)|data[0];
           DEBUG_PRINTF("980 laser use time  change OK\r\n");
           u_s_l980.sta.laserUseTimeS=u_sys_param.sys_config_param.laser_use_timeS;        
-          CAN_r_w_ack(reg,4,(unsigned char *)&u_s_l980.sta.laserUseTimeS);
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,4,(unsigned char *)&u_s_l980.sta.laserUseTimeS);
       break;    
     case L980_REG_AUXILIARY_BULB:       
         u_l980.set_param.auxLedBulbDutySet=data[0];
-        u_l980.set_param.auxLedBulbFreqSet=data[1];
+        u_l980.set_param.auxLedBulbFreqSet=data[1];        
         DEBUG_PRINTF("980 set led ok duty=%d f=%d\r\n", u_l980.set_param.auxLedBulbDutySet,u_l980.set_param.auxLedBulbFreqSet); 
-        CAN_r_w_ack(reg,2,data);
+        CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2,data);
       break;   
     case L980_REG_MOTOR_POSITION:
-        u_l980.set_param.positionSet=(data[1]<<8)|data[0];//
-        if(u_l980.set_param.positionSet>L980_MAX_MOTOR_DISTANCE_UM)
         {
-          u_l980.set_param.positionSet=15000;
-        }      
-        unsigned short int ctr=(data[3]<<8)|data[2];      
-        app_motor_move_to_sem(ctr);       
-        CAN_r_w_ack(reg,4,data);             
+          unsigned short int setTemp=(data[1]<<8)|data[0];
+          laser_ctr_param.motor_active=(data[3]<<8)|data[2];
+          if(laser_ctr_param.motor_active>L980_MAX_MOTOR_DISTANCE_UM)
+          {
+            laser_ctr_param.motor_active=L980_MAX_MOTOR_DISTANCE_UM;         
+          }
+          if(setTemp!=0)
+          {
+            if(setTemp>L980_MAX_MOTOR_DISTANCE_UM)  u_l980.set_param.positionSet=L980_MAX_MOTOR_DISTANCE_UM;
+            else u_l980.set_param.positionSet=setTemp;
+          }
+          app_motor_move_to_sem(laser_ctr_param.motor_active);
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,4,data); 
+        }            
       break;
     case L980_REG_LASER_TEMPRATURE:
           u_l980.set_param.targetTempratureSet=(data[1]<<8)|data[0];//
-          DEBUG_PRINTF("980 set work emprature OK=%d℃r\n",u_l980.set_param.targetTempratureSet); 
+          DEBUG_PRINTF("980 set work emprature OK=%.1f℃r\n",u_l980.set_param.targetTempratureSet*0.1); 
           CAN_r_w_ack(reg,2, (unsigned char *)&u_l980.set_param.targetTempratureSet);    
       break;
     case L980_REG_COUNTDOWN_TIMERS:
-          if(data[0]!=0) 
-          {
-            u_s_l980.sta.staByte|=L980_STA_TIMERS_BIT3;
-          }
-          else 
-          {
-            u_s_l980.sta.staByte&=(~(L980_STA_TIMERS_BIT3));
-          } 
           u_l980.set_param.timerSet=(data[3]<<8)|data[2];          
+          u_sys_param.sys_config_param.laTimerSet= abs(u_l980.set_param.timerSet);          
           DEBUG_PRINTF("980 counter timer set OK= %ds\r\n",u_l980.set_param.timerSet);
-          CAN_r_w_ack(reg,4, data);       
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, data);       
       break;
-      case  L980_REG_SYNC_CONFIG:
+      case  L980_REG_SYNC_CONFIG: 
           memcpy(u_l980.data,data,sizeof(L980_SET_PARAM)); 
           transmitBuff[0]=1;//ok
           transmitBuff[1]=0;
-          CAN_r_w_ack(reg,2, transmitBuff); 
+          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, transmitBuff); 
           DEBUG_PRINTF("980 config param set OK\r\n");
       break;
+      case L980_REG_ENGINEER_MODE:
+          if(data[0]!=0)
+          {
+            u_s_l980.sta.reserveByte=1;
+            DEBUG_PRINTF("980 in engineer mode! please call manufacturer\r\n");
+          }
+         else 
+         {
+          u_s_l980.sta.reserveByte=0;
+          DEBUG_PRINTF("980 exit engineer mode!\r\n");
+         }
+         CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, data); 
+      break;
+    case L980_REG_TEC_CTR:
+          u_s_l980.sta.tec_switch=(data[3]<<8)|data[2];
+          if(u_s_l980.sta.tec_switch!=0)
+          {
+           
+            DEBUG_PRINTF("980 tec enable\r\n");
+          }
+          else 
+          {
+            
+            DEBUG_PRINTF("980 tec disable\r\n");
+          }
+        CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, data);
+    break;
     default:
       break;
   }
@@ -293,59 +322,62 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
  void L980_appRegDataParaphrase(L980_can_app_package *pPkt,unsigned char functionCode)
  {   
     if(functionCode == L980_REG_WRITE_MASK)
-    {       
+    {             
       L980_appWriteAck(pPkt->laser980Reg,pPkt->data);       
     }  
     else 
     {     
+     
       L980_appReadAck(pPkt->laser980Reg,pPkt->data);
     }
  }
 /************************************************************************//**
   * @brief  CAN_receivePackageHandle
-  * @param  buff:数据缓存
+  * @param  data:数据缓存；packageType 长包、短包
   * @note   标准帧，固定长度8bytes
   * @retval None
   ****************************************************************************/
- static unsigned char canAppDataBuff[72];
- static L980_can_app_package pL980;
+
  void CAN_receivePackageHandle(unsigned char *data,unsigned char packageType)
  {  
+    static unsigned char canAppDataBuff[128];
+    static L980_can_app_package pL980;
     unsigned short int crcValue;  
     unsigned char len;
     unsigned char functionCode;
     if(packageType==RTU_CODE_SINGLE_PACKAGE) 
     { 
-      len = data[1]+2;
-      crcValue=data[len]<<8|data[len+1]; 
-      if(crcValue!=CAN_crc16Num(data,len)) return; 
+      len = data[1]+4;
+      crcValue=(data[len-2]<<8)|data[len-1];  
+      if(crcValue!=CAN_crc16Num(data,len-2)) return;     
       functionCode=data[0]&L980_REG_WRITE_MASK;      
       pL980.laser980Reg = data[0]&L980_REG_MASK;
       pL980.packLen = data[1];   
       pL980.data = &data[2];     
       pL980.crcH = data[pL980.packLen+2];  
       pL980.crcL = data[pL980.packLen+3]; 
-      L980_appRegDataParaphrase(&pL980,functionCode);
+     L980_appRegDataParaphrase(&pL980,functionCode);
     } 
     else  
     {
-      can_long_package *pLpack = (can_long_package*)data;
-      if(pLpack->packageNum>(pLpack->currentNum))
+      if(data[0]>16)   return;//too long
+      if((data[0])>data[7])
       {       
-        memcpy(&canAppDataBuff[pLpack->currentNum*6],pLpack->data,6); 
-        if(pLpack->packageNum==(pLpack->currentNum+1))
-        {//重组结束   
+        memcpy(&canAppDataBuff[data[7]*6],&data[1],6);         
+        if(data[0]==(data[7]+1))
+        {//重组结束 
+          len = canAppDataBuff[1]+4;
+          if(len>128) return ;
+          crcValue=(canAppDataBuff[len-2]<<8)|canAppDataBuff[len-1];
+          if(crcValue!=CAN_crc16Num(canAppDataBuff,len-2)) return;        
           functionCode=canAppDataBuff[0]&L980_REG_WRITE_MASK;
-          if(functionCode==REG_AUX_REG)
+          pL980.laser980Reg=canAppDataBuff[0]&L980_REG_MASK;
+          if(pL980.laser980Reg==REG_AUX_REG)
           {         
             //CAN_LongPackageHandle(canAppDataBuff);
           }
           else
-          {
-            len = data[1]+2;
-            crcValue=data[len]<<8|data[len+1]; 
-            if(crcValue!=CAN_crc16Num(data,len)) return;              
-            pL980.laser980Reg=canAppDataBuff[0]&L980_REG_MASK;
+          {   
             pL980.packLen=canAppDataBuff[1];   
             pL980.data=&canAppDataBuff[2];     
             pL980.crcH= canAppDataBuff[pL980.packLen+2];  

@@ -150,6 +150,7 @@ void MX_GPIO_Init(void)
  void app_980_pwr_en(  FunctionalState flag)
  {   
    if(flag==0)  HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_RESET);
-   else HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_SET);  
+   else HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_SET); 
+    
  }
 /* USER CODE END 2 */

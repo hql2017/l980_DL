@@ -12,7 +12,8 @@
 #include "tim.h"
 #include "stdlib.h"
 
-#define  TEC_COOL_DIR  0
+#define  TEC_COOL_DIR  1
+#define  TEC_HOT_DIR  0
   /************************************************************************//**
   * @brief tec开关
   * @param  flag-使能信号
@@ -95,7 +96,7 @@
       {
         tec_dir(TEC_COOL_DIR);
       }
-      else tec_dir(!TEC_COOL_DIR);             
+      else tec_dir(TEC_HOT_DIR);             
       tec_pwm_set((unsigned short int )(abs(outVoltage)));       
       HAL_TIM_PWM_Start(&htim20,TIM_CHANNEL_3);  
       tec_en(1);

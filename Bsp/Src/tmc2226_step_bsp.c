@@ -330,7 +330,7 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
   {
     app_motor_stop_fresh_status();
     DEBUG_PRINTF("arrive OC=%d \r\n",htim3.Instance->CNT);
-  }
+  } 
 }
  /************************************************************************//**
   * @brief  encoder_count_config(unsigned char dir)
@@ -409,7 +409,6 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
   * @brief app_get_motor_real_position 
   * @param   
   * @note   获取当前位置  
-  *        
   * @retval position 单位μm
   ****************************************************************************/
  unsigned int app_get_motor_real_position(void)
