@@ -109,7 +109,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
     APP_CAN_SEND_DATA(data,8,CAN_RTU_SLAVE_ID);
   }  
  } 
- 
+ extern void app_power_off_semo(void);
  /************************************************************************//**
   * @brief  L980_appDataParaphrase
   * @param   
@@ -298,7 +298,6 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
           u_s_l980.sta.tec_switch=(data[3]<<8)|data[2];
           if(u_s_l980.sta.tec_switch!=0)
           {
-           
             DEBUG_PRINTF("980 tec enable\r\n");
           }
           else 
@@ -308,6 +307,10 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
           }
         CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, data);
     break;
+      case L980_REG_SYS_POWER_OFF:
+       if(data[0]==1) app_power_off_semo();
+      break;
+
     default:
       break;
   }
@@ -319,6 +322,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
   * @note   L980应用数据解析
   * @retval None
   ****************************************************************************/
+
  void L980_appRegDataParaphrase(L980_can_app_package *pPkt,unsigned char functionCode)
  {   
     if(functionCode == L980_REG_WRITE_MASK)

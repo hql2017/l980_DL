@@ -378,7 +378,7 @@ static void encoder_count_config(unsigned char dir,unsigned  int encoderCount)
 void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsigned char speed)
 {  
   if(distanceUm>MOTOR_MAX_UM)  return;  
-  unsigned  int history_positionUm =(__HAL_TIM_GET_COUNTER(&htim3)+1)>>1; 
+  unsigned  int history_positionUm =(__HAL_TIM_GET_COUNTER(&htim3)+1); 
   if(history_positionUm==distanceUm&&dir!=MOTOR_DIR_ZERO)  return; 
   unsigned  int steps=0;   
   if(dir==MOTOR_DIR_ZERO)
@@ -392,14 +392,14 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
     {
       steps=history_positionUm-distanceUm;
       steps=(steps/10)+1;      
-      encoder_count_config(MOTOR_DIR_REVERSE,distanceUm<<1);
+      encoder_count_config(MOTOR_DIR_REVERSE,distanceUm);
       tmc2226_start(MOTOR_DIR_REVERSE,speed,steps);
     } 
     else 
     {
       steps=distanceUm-history_positionUm;
       steps=(steps/10)+1;
-      encoder_count_config(MOTOR_DIR_FORWARD,distanceUm<<1);
+      encoder_count_config(MOTOR_DIR_FORWARD,distanceUm);
       tmc2226_start(MOTOR_DIR_FORWARD,speed,steps);
     }    
   }
@@ -414,6 +414,6 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
  unsigned int app_get_motor_real_position(void)
  {
   unsigned int real;
-  real = (__HAL_TIM_GetCounter(&htim3))>>1;
+  real = (__HAL_TIM_GetCounter(&htim3));
   return real;
  }

@@ -10,7 +10,7 @@
  * W:write 
  * 非标准modbusRTU功能码
  * ************/
-#define L980_MAX_MOTOR_DISTANCE_UM    32000  //32mm,最远运动距离
+#define L980_MAX_MOTOR_DISTANCE_UM    35000  //32mm,最远运动距离
 #define L980_MAX_PROHOT_WAIT_TIME  20*SYS_1_SECOND_TICKS//20s
 #define L980_CAN_FRAME_TIMEOUT  200
 #define L980_CAN_MINI_TIME_MS  50//安全包间隔
@@ -38,6 +38,7 @@ typedef enum {
 	L980_REG_SYNC_CONFIG,           //同步配置数据写返回（1成功；0失败）	
 	L980_REG_ENGINEER_MODE,         //工程模式，无需心跳(控制板不开放)(2Bytes)	( unsigned short int 0) 1，调试模式；0正常模式。
 	L980_REG_TEC_CTR,              //制冷片开关（水循环异常需要关闭）//w启停	(2Bytes) (unsigned short 0)=ctr cmd;
+	L980_REG_SYS_POWER_OFF,              //系统开关
 	REG_AUX_REG,                    //r/w其他数据
 }L980_cmd;
 

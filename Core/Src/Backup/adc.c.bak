@@ -510,14 +510,14 @@ void app_start_multi_channel_adc(void)
 {  
   #if 1
   //调采集频率() timeMs=count*0.01ms
-  __HAL_TIM_SetAutoreload(&htim1,1999);//20ms
-  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,999);//20ms
+  __HAL_TIM_SetAutoreload(&htim1,2999);//30ms
+  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,1499);//30ms
   #endif
   HAL_TIM_Base_Start(&htim1);//trigger
   HAL_ADC_Start_DMA(&hadc1,(unsigned int*)ad1Buff,MAX_AD1_BUFF_LENGTH);  
   HAL_ADC_Start_DMA(&hadc2,(unsigned int*)ad2Buff,MAX_AD2_BUFF_LENGTH); 
   //energe 
-  __HAL_TIM_SetAutoreload(&htim15,60000);//1999);//20ms 
+  __HAL_TIM_SetAutoreload(&htim15,1999);//20ms 
   HAL_TIM_Base_Start(&htim15);//trigger
   HAL_ADC_Start_DMA(&hadc3,(unsigned int*)ad3Buff,MAX_AD3_BUFF_LENGTH); 
 }
@@ -557,7 +557,6 @@ void filter_ad(ADC_HandleTypeDef  *hadc)
   }
   if(hadc->Instance==ADC3)
   {
-    DEBUG_PRINTF("ad3\r\n"); 
     for( i=0;i<MAX_AD3_BUFF_LENGTH;i++)
     {   
       sum[0]+=ad2Buff[i];
@@ -650,7 +649,7 @@ void app_get_adc_value(unsigned char adChannel,float *vBuff)
   else if(adChannel==AD1_CH2_VBUS)
   {
     temp=((advalue[AD1_CH2_VBUS]*AD_VREF_VOLTAGE)>>12)*11;
-    *vBuff=temp*1.00840;
+    *vBuff=temp*0.00100840;//V//1.00840;//mV
    //DEBUG_PRINTF("vBus=%dmV ad=%d\r\n", temp,advalue[AD1_CH2_VBUS]);
   }
   else if(adChannel==AD1_CH3_I_TEC)
