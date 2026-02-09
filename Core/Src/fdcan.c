@@ -79,7 +79,7 @@ void MX_FDCAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN FDCAN1_Init 2 */
-   FDCAN1_filter_config();
+   FDCAN1_filter_config();   
   /* USER CODE END FDCAN1_Init 2 */
 
 }
@@ -275,7 +275,7 @@ void APP_CAN_SEND_DATA(	uint8_t *data,uint16_t dataLen,uint16_t targetID)
 	TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 	TxHeader.MessageMarker = 0x01; 
   
-  HAL_StatusTypeDef err = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1,&TxHeader,data);
+  HAL_StatusTypeDef err = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1,&TxHeader,data);        
   if(err!=HAL_OK) 
   {//restart 
     HAL_FDCAN_Stop(&hfdcan1);      

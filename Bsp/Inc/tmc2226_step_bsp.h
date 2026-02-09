@@ -31,5 +31,6 @@ void tmc2226_step_pwm_set(unsigned  int speed);
 
 unsigned int app_get_motor_real_position(void);
 
+
 #endif /* TMC2226_STEP_BSP_H_ */
 

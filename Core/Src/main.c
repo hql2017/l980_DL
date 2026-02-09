@@ -196,6 +196,7 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 #include "tmc2226_step_bsp.h"
+extern void app_motor_err_handle(osStatus_t errSta);
 /* USER CODE END 4 */
 
 /**
@@ -215,8 +216,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM4) {         
-    app_motor_stop_fresh_status();
+  if (htim->Instance == TIM4) {     
+    app_motor_err_handle(osErrorTimeout); 
     DEBUG_PRINTF("steps overflow\r\n "); 
   } 
   /* USER CODE END Callback 1 */
