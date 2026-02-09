@@ -41,7 +41,7 @@ void MX_GPIO_Init(void);
 /* USER CODE BEGIN Prototypes */
 void app_load_power_switch( FunctionalState flag);
 void app_mcu_sys_led(  FunctionalState flag);
-void app_980_pwr_en(  FunctionalState flag);
+void app_980_dac_en(  FunctionalState flag);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

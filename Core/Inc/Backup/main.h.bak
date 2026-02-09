@@ -106,8 +106,8 @@ extern void app_motor_stop_fresh_status(void);
 #define DEBUG_LPUART1_RX_GPIO_Port GPIOC
 #define DEBUG_LPUART1_TX_Pin GPIO_PIN_1
 #define DEBUG_LPUART1_TX_GPIO_Port GPIOC
-#define LOAD_PWR_ON_OUT_Pin GPIO_PIN_3
-#define LOAD_PWR_ON_OUT_GPIO_Port GPIOC
+#define L980_LASER_PWR_ON_OUT_Pin GPIO_PIN_3
+#define L980_LASER_PWR_ON_OUT_GPIO_Port GPIOC
 #define ADC1_IN1_iBUS_Pin GPIO_PIN_0
 #define ADC1_IN1_iBUS_GPIO_Port GPIOA
 #define ADC1_IN2_VBUS_Pin GPIO_PIN_1
@@ -124,8 +124,8 @@ extern void app_motor_stop_fresh_status(void);
 #define ADC2_IN3_MOTOR_TEMPRATURE_GPIO_Port GPIOA
 #define ADC2_IN4_TEC_TEMPRATURE_Pin GPIO_PIN_7
 #define ADC2_IN4_TEC_TEMPRATURE_GPIO_Port GPIOA
-#define LASER980_PWR_EN_OUT_Pin GPIO_PIN_4
-#define LASER980_PWR_EN_OUT_GPIO_Port GPIOC
+#define LASER980_DAC_EN_OUT_Pin GPIO_PIN_4
+#define LASER980_DAC_EN_OUT_GPIO_Port GPIOC
 #define LASER980_ERROR_OVERLOAD_IN_Pin GPIO_PIN_5
 #define LASER980_ERROR_OVERLOAD_IN_GPIO_Port GPIOC
 #define ENERGE_FEEDBACK_OVERLOAD_IN_Pin GPIO_PIN_0
@@ -187,7 +187,7 @@ extern void app_motor_stop_fresh_status(void);
 
 #define MOTOR_TMC_PROTECT_TEMPRATUR   80.0//电机保护温度
 
-#ifndef DEBUG_MSG_UART 
+#ifdef DEBUG_MSG_UART 
 #define DEBUG_MSG_UART  /*use printf*/
 #define DEBUG_PRINTF(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else

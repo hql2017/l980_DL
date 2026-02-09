@@ -214,8 +214,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
         else
         {
           laser_ctr_param.pro_hot=0;
-          
-          DEBUG_PRINTF("980 exit prohot finish ,wait status fresh\r\n");
+          DEBUG_PRINTF("980 exit prohot cmd ,wait status fresh\r\n");
         }
         app_laser_prohot_semo();
       break;    
@@ -256,7 +255,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
             if(setTemp>L980_MAX_MOTOR_DISTANCE_UM)  u_l980.set_param.positionSet=L980_DEFAULT_POSITON_UM;
             else u_l980.set_param.positionSet=setTemp;
           }
-          app_motor_move_to_sem(laser_ctr_param.motor_active);         
+          //app_motor_move_to_sem(laser_ctr_param.motor_active);         
         }            
       break;
     case L980_REG_LASER_TEMPRATURE:
@@ -291,7 +290,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
          
       break;
     case L980_REG_TEC_CTR:
-          u_s_l980.sta.tec_switch=(data[3]<<8)|data[2];
+          u_s_l980.sta.tec_switch=(data[1]<<8)|data[0];
           if(u_s_l980.sta.tec_switch!=0)
           {
             DEBUG_PRINTF("980 tec enable\r\n");
@@ -303,7 +302,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
           }
     break;
       case L980_REG_SYS_POWER_OFF:
-       if(data[0]==1) app_power_off_semo();
+       //if(data[0]==1) app_power_off_semo();
       break;
 
     default:

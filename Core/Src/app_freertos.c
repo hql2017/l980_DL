@@ -135,7 +135,7 @@ const osThreadAttr_t myTask06_attributes = {
 };
 /* Definitions for motorPositonQueue01 */
 osMessageQueueId_t motorPositonQueue01Handle;
-uint8_t positonQueue01Buffer[ 2 * sizeof( uint16_t ) ];
+uint8_t positonQueue01Buffer[ 3 * sizeof( uint16_t ) ];
 osStaticMessageQDef_t positonQueue01ControlBlock;
 const osMessageQueueAttr_t motorPositonQueue01_attributes = {
   .name = "motorPositonQueue01",
@@ -287,7 +287,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of motorPositonQueue01 */
-  motorPositonQueue01Handle = osMessageQueueNew (2, sizeof(uint16_t), &motorPositonQueue01_attributes);
+  motorPositonQueue01Handle = osMessageQueueNew (3, sizeof(uint16_t), &motorPositonQueue01_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -354,6 +354,7 @@ void StartDefaultTask(void *argument)
   app_sys_param_load();
   float local_disp; 
    unsigned char lowVoltageFlag;
+   static unsigned int local_time;
   osDelay(1000); 
   for(;;)
   { 
@@ -389,7 +390,8 @@ void StartDefaultTask(void *argument)
     //DEBUG_PRINTF(" laser_tec_T=%.1f℃ target=%d",u_s_l980.sta.realtemprature*0.1,u_sys_param.sys_config_param.targetTempratureSet);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
    // DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
-   // DEBUG_PRINTF("POSITON:pos=%dμm\r\n",u_s_l980.sta.realPosition);       
+    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",u_s_l980.sta.realPosition ); 
+   
     osDelay(1000); 
     HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);
    // app_tec_auto_manage();
@@ -410,45 +412,40 @@ void motorTask02(void *argument)
   /* Infinite loop */
   tmc2226_init();   
   unsigned int timeOut=0;
-  unsigned short int targetPosition=0;
+  unsigned short int targetPosition=0,history_p;
   osDelay(1000);
   osStatus_t m_sta;
   for(;;)
   {
-    uint32_t motor_events =osEventFlagsGet(motorEvent01Handle);     
-    osMessageQueueGet(motorPositonQueue01Handle, &targetPosition, NULL, 5);
-       
-    if((motor_events&EVENTS_MOTOR_ZERO_BIT0)==EVENTS_MOTOR_ZERO_BIT0)  
-    { 
+    uint32_t motor_events =osEventFlagsGet(motorEvent01Handle);    
+    osStatus_t q_stat=osMessageQueueGet(motorPositonQueue01Handle, &targetPosition, NULL, 5);
+    if((motor_events&EVENTS_MOTOR_OK_ALL_BITS_MASK)==EVENTS_MOTOR_OK_ALL_BITS_MASK)  
+    {  
       u_s_l980.sta.realPosition = app_get_motor_real_position();
-      if((u_s_l980.sta.staByte&L980_ERR_MOTOR_BIT7)==L980_ERR_MOTOR_BIT7) 
-      {
-        targetPosition=app_get_motor_real_position();
-      }  
       if(targetPosition>L980_MAX_MOTOR_DISTANCE_UM) 
-      { 
+      {        
         targetPosition=u_s_l980.sta.realPosition;     
       }
-      if((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1)
-      {
-        if(u_s_l980.sta.realPosition!=targetPosition)
-        {   
-          if(targetPosition==0)
+      if(history_p!=targetPosition)
+      {   
+        history_p=targetPosition;
+        if(targetPosition==0)
+        {
+          //find zero              
+          app_motor_slide_position(MOTOR_DIR_ZERO,0,3);   
+         
+          timeOut=0;
+        }
+        else
+        {						 
+          if(u_s_l980.sta.realPosition>targetPosition)
           {
-            //find zero              
-            app_motor_slide_position(MOTOR_DIR_ZERO,L980_MAX_MOTOR_DISTANCE_UM,3);
-            timeOut=0;
+            //reverse
+            app_motor_slide_position(MOTOR_DIR_REVERSE,targetPosition,3);                 
           }
-          else
-          {
-            if(u_s_l980.sta.realPosition>targetPosition)
-            {
-              //reverse
-              app_motor_slide_position(MOTOR_DIR_REVERSE,targetPosition,3);                 
-            }
-            else app_motor_slide_position(MOTOR_DIR_FORWARD,targetPosition,3);
-            timeOut=0;
-          }   
+          else app_motor_slide_position(MOTOR_DIR_FORWARD,targetPosition,3);
+          DEBUG_PRINTF("motor move to %dum\r\n",targetPosition); 
+          timeOut=0;
         }  
       }               
     }
@@ -478,17 +475,24 @@ void motorTask02(void *argument)
     }
     if((motor_events&EVENTS_MOTOR_IDLE_BIT1)!=EVENTS_MOTOR_IDLE_BIT1)
     {
-      timeOut+=5;        
+      timeOut+=100;       
+      if(targetPosition>L980_MAX_MOTOR_DISTANCE_UM)   //立即停止 
+      {
+        app_motor_stop_fresh_status();
+        u_s_l980.sta.realPosition = app_get_motor_real_position();
+        targetPosition=u_s_l980.sta.realPosition;   
+        timeOut=0;
+      }  
       if(timeOut>MOTOR_MOVE_ERROR_TIMEOUT_S)
       {  
-        timeOut=0;   
+        timeOut=0;
+        u_s_l980.sta.realPosition = app_get_motor_real_position(); 
         targetPosition = app_get_motor_real_position();         
-        app_motor_err_handle(osErrorTimeout); 
-        DEBUG_PRINTF("MOTOR error timeout !stop =%dμm\r\n",app_get_motor_real_position());
+        app_motor_err_handle(osErrorTimeout);        
         break;
       }
     }
-    osDelay(1);
+    osDelay(100);
   }
   /* USER CODE END motorTask02 */
 }
@@ -518,10 +522,11 @@ void CANopenTask03(void *argument)
       if(u_l980.set_param.auxLedBulbDutySet!=u_sys_param.sys_config_param.auxLedBulbDutySet)  
       {
         u_sys_param.sys_config_param.auxLedBulbDutySet=u_l980.set_param.auxLedBulbDutySet;
+        #if 0
         if(u_sys_param.sys_config_param.auxLedBulbDutySet==0)app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,DISABLE);
         else app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,ENABLE);
-      }
-      
+        #endif
+      }      
     }  
     l980_heart_timeout+=1;
     if(l980_heart_timeout>L980_CAN_FRAME_TIMEOUT)
@@ -532,15 +537,18 @@ void CANopenTask03(void *argument)
         if((u_s_l980.sta.staByte&L980_STA_HEART_BIT0)==L980_STA_HEART_BIT0) 
         {
           DEBUG_PRINTF("CAN-disconnect !");
-          if(laser_ctr_param.pro_hot!=0)
+          if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)
           {   
             DEBUG_PRINTF("exit prohot !");           
             osSemaphoreRelease(laserCloseBinarySem03Handle);              
             laser_ctr_param.pro_hot=0;
           }
-          uint16_t target_positon=0;
-          osMessageQueuePut(motorPositonQueue01Handle, &target_positon, NULL, 0);    
-          DEBUG_PRINTF("980 motor find zero\r\n");  
+          else
+          {
+            uint16_t target_positon=0;
+            osMessageQueuePut(motorPositonQueue01Handle, &target_positon, NULL, 10);    
+            DEBUG_PRINTF("980 motor find zero\r\n");  
+          }         
         }
         u_s_l980.sta.staByte&=(~L980_STA_HEART_BIT0);
       } 
@@ -568,19 +576,25 @@ void laserWorkTask04(void *argument)
   unsigned int timeout ;
   for(;;)
   {
-    uint32_t laser_event=osEventFlagsGet(laserEvent02Handle);    
+    uint32_t laser_event=osEventFlagsWait(laserEvent02Handle,EVENTS_LASER_OK_ALL_BITS_MASK,osFlagsWaitAll|osFlagsNoClear,portMAX_DELAY);    
     osStatus_t c_sta= osSemaphoreAcquire(laserCloseBinarySem03Handle,5);
     if(c_sta==osOK&&(u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)
     {
-      app_980_pwr_en(DISABLE);      
+			app_load_power_switch(DISABLE);		
+      app_980_dac_en(DISABLE);      
       app_dac_out(0);
+      osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2); 
       u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
       osTimerStop(secondsHeartTimer03Handle);
-      osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);  
-      //position
-      unsigned short int targetPosition=MOTOR_MAX_TRIP_STEPS_COUNT;//return 0
-      osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_MOTOR_MOVE_WAIT_TIMEOUT);    
-      DEBUG_PRINTF("980 motor reverse zero\r\n"); 
+      osTimerStop(laserWorkTimer01Handle);
+      //positionif
+     
+      unsigned short int targetPosition=0;//return 0
+      if(osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, 10)==osOK)
+      {          
+        DEBUG_PRINTF("send to zero succces\r\n");
+      } 
+      else  			DEBUG_PRINTF("send to zero fail\r\n");
       timeout=0;
       do 
       {
@@ -588,15 +602,13 @@ void laserWorkTask04(void *argument)
         timeout+=L980_CAN_MINI_TIME_MS;
         if(timeout>L980_MOTOR_MOVE_WAIT_TIMEOUT)
         {
-          u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-          DEBUG_PRINTF("980 motor error! exit prohot fail\r\n");
+          app_motor_err_handle(osErrorTimeout);
           break;
         }        
       }while(u_s_l980.sta.realPosition!=0);
       if(u_s_l980.sta.realPosition==0)
       {
-        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);        
-        osTimerStop(laserWorkTimer01Handle);
+        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);   
         u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);  
         DEBUG_PRINTF("l980 exit prohot ok\r\n");
       }
@@ -604,8 +616,9 @@ void laserWorkTask04(void *argument)
       {
         DEBUG_PRINTF("l980 exit prohot fail!\r\n");
       }
+      laser_ctr_param.JT_laser_out=0;
     }   
-    if(laser_ctr_param.JT_laser_out!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)&&(laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)==EVENTS_LASER_OK_ALL_BITS_MASK)
+    if(laser_ctr_param.JT_laser_out!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1))
     {
       if(u_l980.set_param.timerSet<=0)
       {
@@ -621,8 +634,9 @@ void laserWorkTask04(void *argument)
         {
           u_s_l980.sta.staByte|=L980_STA_TIMERS_BIT3;
           osTimerStart(laserWorkTimer01Handle,abs(u_l980.set_param.timerSet)); 
-        }        
-        app_980_pwr_en(ENABLE);   
+        }   	
+				app_dac_out(600);	
+				app_980_dac_en(ENABLE);						
         u_s_l980.sta.staByte|=L980_STA_PULSEOUT_BIT2;
         osTimerStart(secondsHeartTimer03Handle,SYS_1_SECOND_TICKS);
         DEBUG_PRINTF("l980 JT pulse out \r\n");
@@ -630,19 +644,19 @@ void laserWorkTask04(void *argument)
       else 
       {
         //光电管
-       // DEBUG_PRINTF("energe%d \r\n",u_s_l980.sta.energeFeedback);
+				//DEBUG_PRINTF("energe%d\r\n",u_s_l980.sta.energeFeedback);
         //1s  
       }    
     }
     else 
     {                         
-      osTimerStop(laserWorkTimer01Handle);  
+      osTimerStop(laserWorkTimer01Handle);
+      osTimerStop(secondsHeartTimer03Handle);  
       u_s_l980.sta.staByte&=(~L980_STA_TIMERS_BIT3);
       if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)==L980_STA_PULSEOUT_BIT2) 
       {
         DEBUG_PRINTF("l980 JT stop pulse out \r\n");
-        app_980_pwr_en(DISABLE);  
-        osTimerStop(secondsHeartTimer03Handle);
+        app_980_dac_en(DISABLE);       
         u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
       } 
       if((laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)!=EVENTS_LASER_OK_ALL_BITS_MASK)
@@ -671,7 +685,7 @@ void laserProhotTask05(void *argument)
   /* Infinite loop */
   unsigned int timeout=0;
   unsigned char local_prohot;  
-  unsigned short int targetPosition=MOTOR_MAX_TRIP_STEPS_COUNT;
+  unsigned short int targetPosition=0;
   for(;;)
   {
     osSemaphoreAcquire(prohotBinarySem02Handle,portMAX_DELAY);
@@ -680,17 +694,15 @@ void laserProhotTask05(void *argument)
     {  
       if((u_s_l980.sta.staByte&L980_STA_HEART_BIT0)!=L980_STA_HEART_BIT0)
       {
-        DEBUG_PRINTF("l980 disconnect! exit prohot!\r\n");        
-        app_980_pwr_en(DISABLE); 
+        DEBUG_PRINTF("l980 disconnect! exit prohot!\r\n"); 
+        app_980_dac_en(DISABLE); 
+        u_s_l980.sta.dacValue=0;  
         app_dac_out(0); 
-        u_s_l980.sta.dacValue=0;
         u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
-        if(u_s_l980.sta.realPosition!=0)
-        {
-          targetPosition=L980_MAX_MOTOR_DISTANCE_UM;
-          osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_MOTOR_MOVE_WAIT_TIMEOUT);    
-          DEBUG_PRINTF("980 motor reverse zero\r\n"); 
-        }
+        app_load_power_switch(DISABLE); 
+        osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);        
+        targetPosition = 0;
+        osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_CAN_MINI_TIME_MS);  
         timeout=0;
         do 
         {
@@ -698,31 +710,29 @@ void laserProhotTask05(void *argument)
           timeout+=L980_CAN_MINI_TIME_MS;
           if(timeout>L980_MOTOR_MOVE_WAIT_TIMEOUT)
           {
-            u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-            DEBUG_PRINTF("980 motor error! exit prohot fail\r\n");
+            app_motor_err_handle(osErrorTimeout);
             break;
           }        
         }while(u_s_l980.sta.realPosition!=0); 
         if(u_s_l980.sta.realPosition==0)
         {
-          u_s_l980.sta.staByte&=(~L980_ERR_MOTOR_BIT7);
-          u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
-          local_prohot=0;
-          laser_ctr_param.pro_hot=0;
+          u_s_l980.sta.staByte&=(~L980_ERR_MOTOR_BIT7);          
+          osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
         }  
+        else   DEBUG_PRINTF("motor err exit prohot timeout\r\n");
+        u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);
+        local_prohot=0;
+        laser_ctr_param.pro_hot=0;
       }
       else 
       {
         if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)!=L980_STA_PROHOT_BIT1)
-        {
-          if(u_s_l980.sta.realPosition!=u_l980.set_param.positionSet)
-          {
-            targetPosition=u_l980.set_param.positionSet;
-            osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_MOTOR_MOVE_WAIT_TIMEOUT);    
-            DEBUG_PRINTF("motor move to %dum\r\n",targetPosition); 
-          }
+        {  
+          targetPosition=u_l980.set_param.positionSet;
+          osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_CAN_MINI_TIME_MS);   
           //laser_ctr_param.energe=u_l980.set_param.energeSet+u_l980.set_param.energeCaliSet;
-          //position      
+          //position  
+					timeout=0;					
           do 
           {
             osDelay(L980_CAN_MINI_TIME_MS);
@@ -730,7 +740,8 @@ void laserProhotTask05(void *argument)
             if(timeout>L980_MOTOR_MOVE_WAIT_TIMEOUT)
             {
               u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-              DEBUG_PRINTF("motor error %dum\r\n",u_s_l980.sta.realPosition);
+              app_motor_err_handle(osErrorTimeout); 
+              osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);             
               break;
             }     
           }while(u_s_l980.sta.realPosition!=u_l980.set_param.positionSet);
@@ -739,17 +750,12 @@ void laserProhotTask05(void *argument)
             u_s_l980.sta.staByte&=(~L980_ERR_MOTOR_BIT7);            
             osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
            //unsigned short int dac_voltage = app_laser_980_energe_to_voltage(u_s_l980.sta.useEnerge)+u_sys_param.sys_config_param.e_cali[u_s_l980.sta.useEnerge/5];
-            unsigned short int dac_voltage=450;//测试固定值
-            app_dac_out(dac_voltage);            
+            unsigned short int dac_voltage=600;//测试固定值
+            app_dac_out(dac_voltage); 
+						app_load_power_switch(ENABLE);						
             osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);
             DEBUG_PRINTF("prohot set vltage ok =%d\r\n",dac_voltage);
-          }
-          else
-          { 
-            u_s_l980.sta.staByte|=L980_ERR_MOTOR_BIT7;
-            DEBUG_PRINTF("prohot motor error %dum\r\n",u_s_l980.sta.realPosition);
-            osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-          }               
+          }                    
           uint32_t laser_event=osEventFlagsGet(laserEvent02Handle);
           if((laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)==EVENTS_LASER_OK_ALL_BITS_MASK)      
           {
@@ -758,7 +764,7 @@ void laserProhotTask05(void *argument)
           }   
           else 
           {    
-            u_s_l980.sta.staByte&=(~L980_STA_PROHOT_BIT1);           
+            app_load_power_switch(DISABLE);         
             app_dac_out(0);
             osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);                    
             u_s_l980.sta.staByte&=(~L980_STATUS_BYTE_MASK);         
@@ -791,11 +797,13 @@ void powerOffTask06(void *argument)
   {
     osStatus_t status = osSemaphoreAcquire(poweroffBinarySem04Handle,portMAX_DELAY); 
     if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)
-    {       
-      app_980_pwr_en(DISABLE);
-      u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
+    {
+      app_load_power_switch(DISABLE);       
+      app_980_dac_en(DISABLE);      
       app_dac_out(0);
-      u_s_l980.sta.dacValue=0;   
+      u_s_l980.sta.dacValue=0;
+      u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
+      osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);
       osSemaphoreRelease(laserCloseBinarySem03Handle);
       DEBUG_PRINTF(" exit hot\r\n");
     }
@@ -825,9 +833,10 @@ void laserWorkTimerCallback01(void *argument)
 {
   /* USER CODE BEGIN laserWorkTimerCallback01 */
   if(u_l980.set_param.timerSet>0)
-  {
-    app_980_pwr_en(DISABLE);
-    u_s_l980.sta.staByte&=(~(L980_STA_TIMERS_BIT3|L980_STA_PULSEOUT_BIT2)); 
+  {   
+    u_s_l980.sta.staByte&=(~(L980_STA_TIMERS_BIT3)); 
+		 //app_980_pwr_en(DISABLE);
+		//u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
   } 
   /* USER CODE END laserWorkTimerCallback01 */
 }
@@ -956,20 +965,8 @@ void app_tec_ctr_semo(void)
   * @retval None
   ****************************************************************************/
  void app_motor_move_to_sem(unsigned short int targetPosition)
- {   
-  if(targetPosition==0)
-  {
-    osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, 0);    
-    DEBUG_PRINTF("980 motor find zero\r\n");                       
-  }        
-  else if(targetPosition>L980_MAX_MOTOR_DISTANCE_UM)
-  {
-    app_motor_stop_fresh_status();//立即停止  
-  }
-  else
-  {
-    osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, 0);    
-  }     
+ {  
+    osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, 0); 
  }
 /************************************************************************//**
 * @brief  app_tec_auto_manage

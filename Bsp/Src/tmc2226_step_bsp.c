@@ -286,7 +286,7 @@ void  tmc2226_stop(void)
   HAL_TIM_PWM_Stop(&htim8,TIM_CHANNEL_1);   
   tmc2226_en(0);  
   HAL_TIM_Encoder_Stop(&htim3,TIM_CHANNEL_ALL); 
-  __HAL_TIM_SetCounter(&htim4,0);
+  __HAL_TIM_SetCounter(&htim4,0);	
   app_motor_run_sta(0);
 } 
  /************************************************************************//**
@@ -385,6 +385,7 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
   {
     encoder_count_config(MOTOR_DIR_ZERO,0);
     tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_UM);
+    DEBUG_PRINTF("zero\r\n");
   }
   else 
   {

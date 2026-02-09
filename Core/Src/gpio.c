@@ -52,7 +52,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, LOAD_PWR_ON_OUT_Pin|LASER980_PWR_EN_OUT_Pin|TEC_DRV8701_PHASE_CTR_OUT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, L980_LASER_PWR_ON_OUT_Pin|LASER980_DAC_EN_OUT_Pin|TEC_DRV8701_PHASE_CTR_OUT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, TMC2226_CTR_EN_OUT_Pin|TMC2226_DIR_OUT_Pin|EEROM_WC_OUT_Pin|MCU_LED_CTR_OUT_Pin, GPIO_PIN_RESET);
@@ -60,8 +60,8 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(TEC_DRV8701_SLEEP_OUT_GPIO_Port, TEC_DRV8701_SLEEP_OUT_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : LOAD_PWR_ON_OUT_Pin LASER980_PWR_EN_OUT_Pin TEC_DRV8701_PHASE_CTR_OUT_Pin */
-  GPIO_InitStruct.Pin = LOAD_PWR_ON_OUT_Pin|LASER980_PWR_EN_OUT_Pin|TEC_DRV8701_PHASE_CTR_OUT_Pin;
+  /*Configure GPIO pins : L980_LASER_PWR_ON_OUT_Pin LASER980_DAC_EN_OUT_Pin TEC_DRV8701_PHASE_CTR_OUT_Pin */
+  GPIO_InitStruct.Pin = L980_LASER_PWR_ON_OUT_Pin|LASER980_DAC_EN_OUT_Pin|TEC_DRV8701_PHASE_CTR_OUT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -119,15 +119,15 @@ void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 2 */
  /************************************************************************//**
-  * @brief 负载电源开关
+  * @brief 激光电源开关
   * @param  flag-使能信号
   * @note   高电平有效
   * @retval None
   ****************************************************************************/
  void app_load_power_switch( FunctionalState flag)
  {   
-   if(flag==DISABLE)  HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_RESET);
-   else HAL_GPIO_WritePin(LOAD_PWR_ON_OUT_GPIO_Port,LOAD_PWR_ON_OUT_Pin,GPIO_PIN_SET);  
+   if(flag==DISABLE)  HAL_GPIO_WritePin(L980_LASER_PWR_ON_OUT_GPIO_Port,L980_LASER_PWR_ON_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(L980_LASER_PWR_ON_OUT_GPIO_Port,L980_LASER_PWR_ON_OUT_Pin,GPIO_PIN_SET);  
  }
 
 /************************************************************************//**
@@ -142,15 +142,15 @@ void MX_GPIO_Init(void)
    else HAL_GPIO_WritePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin,GPIO_PIN_SET);  
  }
     /************************************************************************//**
-  * @brief app_980_pwr_en
+  * @brief app_980_dac_en
   * @param  flag-使能信号
-  * @note   激光电源使能 
+  * @note   激光DAC使能 
   * @retval None
   ****************************************************************************/
- void app_980_pwr_en(  FunctionalState flag)
+ void app_980_dac_en(  FunctionalState flag)
  {   
-   if(flag==0)  HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_RESET);
-   else HAL_GPIO_WritePin(LASER980_PWR_EN_OUT_GPIO_Port,LASER980_PWR_EN_OUT_Pin,GPIO_PIN_SET); 
+   if(flag==0)  HAL_GPIO_WritePin(LASER980_DAC_EN_OUT_GPIO_Port,LASER980_DAC_EN_OUT_Pin,GPIO_PIN_RESET);
+   else HAL_GPIO_WritePin(LASER980_DAC_EN_OUT_GPIO_Port,LASER980_DAC_EN_OUT_Pin,GPIO_PIN_SET); 
     
  }
 /* USER CODE END 2 */
