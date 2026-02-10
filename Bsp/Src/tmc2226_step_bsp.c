@@ -253,7 +253,7 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
 {
 	//check status ,error status	
   unsigned   int targetUm=0;
-	if(spdLevel==0||steps==0)
+	if(spdLevel==0)
 	{
 		tmc2226_stop();
 	}
@@ -265,11 +265,12 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);     
     if(steps < MOTOR_MAX_TRIP_STEPS_COUNT+1) 
     {  
-      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+__HAL_TIM_GET_COUNTER(&htim4)+1);         
+      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+1);         
       else __HAL_TIM_SetAutoreload(&htim4,steps+__HAL_TIM_GET_COUNTER(&htim4)+1);   //0.002mm   
       HAL_TIM_Base_Start_IT(&htim4);             
     }
     else HAL_TIM_Base_Stop_IT(&htim4); //until
+    HAL_TIM_Base_Stop_IT(&htim4); //until
     HAL_TIM_Encoder_Start(&htim3,TIM_CHANNEL_ALL);         
     HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
     tmc2226_en(1); 
@@ -361,7 +362,6 @@ static void encoder_count_config(unsigned char dir,unsigned  int encoderCount)
   else //if(dir==MOTOR_DIR_ZERO)// cali zero
   {      
     __HAL_TIM_SET_COUNTER(&htim3,ENCODER_MAX_COUNT); 
-    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,1);
     __HAL_TIM_DISABLE_IT(&htim3, TIM_IT_CC3); 
   }  
 }
@@ -384,8 +384,7 @@ void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsign
   if(dir==MOTOR_DIR_ZERO)
   {
     encoder_count_config(MOTOR_DIR_ZERO,0);
-    tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_UM);
-    DEBUG_PRINTF("zero\r\n");
+    tmc2226_start(MOTOR_DIR_ZERO,3,MOTOR_MAX_UM);    
   }
   else 
   {

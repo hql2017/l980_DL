@@ -187,7 +187,7 @@ extern void app_motor_stop_fresh_status(void);
 
 #define MOTOR_TMC_PROTECT_TEMPRATUR   80.0//电机保护温度
 
-#ifdef DEBUG_MSG_UART 
+#ifndef DEBUG_MSG_UART 
 #define DEBUG_MSG_UART  /*use printf*/
 #define DEBUG_PRINTF(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else

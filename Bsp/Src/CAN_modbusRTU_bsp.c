@@ -290,19 +290,24 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
          
       break;
     case L980_REG_TEC_CTR:
-          u_s_l980.sta.tec_switch=(data[1]<<8)|data[0];
-          if(u_s_l980.sta.tec_switch!=0)
+        
+          unsigned short int temp_tec=(data[1]<<8)|data[0];
+          if(temp_tec!=u_s_l980.sta.tec_switch)
           {
-            DEBUG_PRINTF("980 tec enable\r\n");
-          }
-          else 
-          {
-            
-            DEBUG_PRINTF("980 tec disable\r\n");
+            u_s_l980.sta.tec_switch=temp_tec;
+            if( u_s_l980.sta.tec_switch!=0)
+            {
+              DEBUG_PRINTF("980 tec enable\r\n");
+            }
+            else 
+            {
+              
+              DEBUG_PRINTF("980 tec disable\r\n");
+            }            
           }
     break;
       case L980_REG_SYS_POWER_OFF:
-       //if(data[0]==1) app_power_off_semo();
+        if(data[0]==1) app_power_off_semo();//用做紧急开关
       break;
 
     default:
