@@ -11,8 +11,9 @@
  * 非标准modbusRTU功能码
  * ************/
 #define L980_MAX_MOTOR_DISTANCE_UM    35000  //32mm,最远运动距离
-#define L980_MAX_PROHOT_WAIT_TIME  20*SYS_1_SECOND_TICKS//20s
-#define L980_CAN_FRAME_TIMEOUT  200
+#define L980_MAX_PROHOT_WAIT_TIME  20*SYS_1_SECOND_TICKS//20s、
+#define L980_MOTOR_MOVE_WAIT_TIMEOUT    10*SYS_1_SECOND_TICKS//10s
+#define L980_CAN_FRAME_TIMEOUT  300
 #define L980_CAN_MINI_TIME_MS  50//安全包间隔
 #define L980_CODE_MASK  0x80
 #define L980_REG_WRITE_MASK  0x80// write:bit7=1 ;read:bit7=0。
@@ -102,6 +103,17 @@ typedef union
 	unsigned char data[sizeof(L980_SET_PARAM)];
 }U_L980_CONFIG_PARAM;
 extern U_L980_CONFIG_PARAM u_l980;
+
+typedef struct {
+    unsigned char moveCode;//0停止；1正转；2反转
+	unsigned char reverse;//保留
+    unsigned short int  targetPosition;    //目标位置
+  }__attribute__((packed)) MOTOR_CONTROL_MESSAGE;
+
+typedef union {
+    MOTOR_CONTROL_MESSAGE msg;
+    unsigned char data[sizeof(MOTOR_CONTROL_MESSAGE)];   
+}U_MOTOR_CTR_MESSAGE;
 
 void CAN_modbusRTU_init(void);
 void CAN_receivePackageHandle(unsigned char *data,unsigned char packageType);

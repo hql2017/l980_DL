@@ -184,6 +184,8 @@ extern void app_motor_run_sta(unsigned char runFlag);
 		unsigned short int period;
 		//check freq,timer8 1M clock freq		
     //period=1000000/50000;
+    #if 0
+    //安静速度 10K~5.5k
     if(speed==3)//high speed  //10k
     {
       //period = 100;
@@ -197,6 +199,21 @@ extern void app_motor_run_sta(unsigned char runFlag);
     {
       period=180;
     } 
+    #else
+    //high speed 12K~5.5k
+       if(speed==3)//high speed  //10k
+      {     
+        period = 80;
+      }
+      else if(speed==2)//mid speed 8k
+      {
+        period = 125;
+      }
+      else //if(speed==1)//5.5k
+      {
+        period=180;
+      } 
+    #endif
 		__HAL_TIM_SetAutoreload(&htim8,period-1);//freq =10k
 		//duty 1%  100%; 0% close	
 		timeUs=period /2;	//duty 50%

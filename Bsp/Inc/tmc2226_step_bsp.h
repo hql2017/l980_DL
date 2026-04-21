@@ -22,6 +22,9 @@
 #define  MOTOR_DIR_REVERSE      1
 #define  MOTOR_DIR_ZERO         2
 
+
+
+
 void tmc2226_init(void);
 void app_steps_pulse(unsigned int steps);
 void app_motor_slide_position(unsigned char dir, unsigned  int distanceUm,unsigned char speed);

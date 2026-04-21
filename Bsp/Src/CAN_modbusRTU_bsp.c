@@ -11,6 +11,7 @@
 
 U_L980_STATUS  u_s_l980;
 U_L980_CONFIG_PARAM u_l980;
+
   /**
   * @brief CAN_modbusRTU_init
   * @param  void
