@@ -46,7 +46,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
 			}
 		}
 	}
-	return crc;
+	return crc;	
 }
 /************************************************************************//**
   * @brief  CAN_r_w_ack
@@ -56,28 +56,31 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
   ****************************************************************************/
  void CAN_r_w_ack(unsigned char reg,unsigned char dataLen,unsigned char *data)
  {
-    unsigned char sendBuff[128],packNum,len;  
-    len= dataLen  +4;
-    if(len>128)  return ;   
-    sendBuff[0]=reg; 
+    unsigned char sendBuff[64],packNum,packLen; 
+    packLen=dataLen+4;   
+    if(dataLen>64)  return ;   
+    sendBuff[0]=reg|L980_REG_WRITE_MASK; 
     sendBuff[1]=dataLen;
-    memcpy(&sendBuff[2],data,dataLen);
-    sendBuff[dataLen+3]=(CAN_crc16Num(sendBuff,dataLen+2)>>8)&0xFF;
-    sendBuff[dataLen+4]=CAN_crc16Num(sendBuff,dataLen+2)&0xFF;
-    if(dataLen>4)
+    if(dataLen>0) memcpy(&sendBuff[2],data,dataLen);
+    sendBuff[dataLen+2]=(CAN_crc16Num(sendBuff,dataLen+2)>>8)&0xFF;
+    sendBuff[dataLen+3]=CAN_crc16Num(sendBuff,dataLen+2)&0xFF; 
+    if(packLen>8)
     {
-      packNum=(len)/6;
-      unsigned char t_len=(len)%6;
-      if(t_len!=0)
+      packNum=(packLen)/6;///8;
+      if((packLen)%6!=0)
       {
-        packNum+=1; 
-        memset(&sendBuff[packNum*6-6+t_len] ,0 ,6-t_len );//剩余补0
+        packNum+=1;         
+        memset(&sendBuff[dataLen+4],0,(packLen)%6);    
       }
       CAN_RTU_transmitPackage(RTU_CODE_LONG_BYTES_PACKAGE,packNum,sendBuff);
     }
     else
     { 
       packNum=1;
+      if(packLen<8)   
+      {
+        memset(&sendBuff[packLen],0,8-packLen);    
+      }   
       CAN_RTU_transmitPackage(RTU_CODE_SINGLE_PACKAGE,packNum,sendBuff);
     }
  }
