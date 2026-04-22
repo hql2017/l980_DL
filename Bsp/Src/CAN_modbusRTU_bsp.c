@@ -131,7 +131,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
     unsigned char transmitBuff[8];
     switch(reg)
     {   
-      case L980_REG_HEART_STATUS:                  
+      case L980_REG_HEART_STATUS: 
           CAN_r_w_ack(reg,sizeof(L980_STATUS),u_s_l980.data);
         break;
       case L980_REG_PULSE_COUNT_AND_TIME:  
