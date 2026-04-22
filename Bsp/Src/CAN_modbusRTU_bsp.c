@@ -11,7 +11,6 @@
 
 U_L980_STATUS  u_s_l980;
 U_L980_CONFIG_PARAM u_l980;
-
   /**
   * @brief CAN_modbusRTU_init
   * @param  void
@@ -101,13 +100,13 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
       transmitBuff[7]=tansNum;
       data+=6;
       tansNum++;      
-      APP_CAN_SEND_DATA(transmitBuff,8,CAN_RTU_SLAVE_ID+RTU_CODE_LONG_BYTES_PACKAGE);
+      APP_CAN_SEND_DATA(transmitBuff,8,CAN_RTU_MASTER_ID+RTU_CODE_LONG_BYTES_PACKAGE);
       HAL_Delay(1);
     }    
   }
   else 
   {       
-    APP_CAN_SEND_DATA(data,8,CAN_RTU_SLAVE_ID);
+    APP_CAN_SEND_DATA(data,8,CAN_RTU_MASTER_ID);
   }  
  } 
  extern void app_power_off_semo(void);
@@ -332,7 +331,6 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
     }  
     else 
     {     
-     
       L980_appReadAck(pPkt->laser980Reg,pPkt->data);
     }
  }

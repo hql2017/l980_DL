@@ -176,6 +176,11 @@ osSemaphoreId_t poweroffBinarySem04Handle;
 const osSemaphoreAttr_t poweroffBinarySem04_attributes = {
   .name = "poweroffBinarySem04"
 };
+/* Definitions for secondHeartBinarySem04 */
+osSemaphoreId_t secondHeartBinarySem04Handle;
+const osSemaphoreAttr_t secondHeartBinarySem04_attributes = {
+  .name = "secondHeartBinarySem04"
+};
 /* Definitions for motorEvent01 */
 osEventFlagsId_t motorEvent01Handle;
 const osEventFlagsAttr_t motorEvent01_attributes = {
@@ -266,6 +271,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of poweroffBinarySem04 */
   poweroffBinarySem04Handle = osSemaphoreNew(1, 0, &poweroffBinarySem04_attributes);
 
+  /* creation of secondHeartBinarySem04 */
+  secondHeartBinarySem04Handle = osSemaphoreNew(1, 1, &secondHeartBinarySem04_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -354,24 +362,25 @@ void StartDefaultTask(void *argument)
   float local_disp; 
    unsigned char lowVoltageFlag;
   osDelay(1000); 
+	osTimerStart(secondsHeartTimer03Handle,SYS_1_SECOND_TICKS);
   for(;;)
   { 
     app_get_adc_value(AD1_CH1_IBUS,&hsm_dl_sta.real_ibus);
-    DEBUG_PRINTF("AD:iBus=%.1fmA",hsm_dl_sta.real_ibus);    
+   // DEBUG_PRINTF("AD:iBus=%.1fmA",hsm_dl_sta.real_ibus);    
     app_get_adc_value(AD1_CH2_VBUS,&hsm_dl_sta.real_Vbus);  
     if(hsm_dl_sta.real_Vbus<12.00&&lowVoltageFlag==0) 
     {
       lowVoltageFlag=1;
-      DEBUG_PRINTF(" low voltage,power off !");
+     // DEBUG_PRINTF(" low voltage,power off !");
       osSemaphoreRelease(poweroffBinarySem04Handle); 
     }
     else 
     {
       if(hsm_dl_sta.real_Vbus>14.00) lowVoltageFlag=0;
     }
-    DEBUG_PRINTF(" vBus=%.2fV",hsm_dl_sta.real_Vbus); 
+    //DEBUG_PRINTF(" vBus=%.2fV",hsm_dl_sta.real_Vbus); 
     app_get_adc_value(AD1_CH3_I_TEC,&local_disp);    
-    DEBUG_PRINTF(" i_TEC=%.1f",local_disp);  
+    //(" i_TEC=%.1f",local_disp);  
     app_get_adc_value(AD2_CH3_NTC_MOTOR_TEMPRATURE,&local_disp);  
     hsm_dl_sta.real_tmc_temprature=local_disp;
     if(hsm_dl_sta.real_tmc_temprature>MOTOR_TMC_PROTECT_TEMPRATUR)
@@ -381,17 +390,21 @@ void StartDefaultTask(void *argument)
       osEventFlagsClear(motorEvent01Handle, EVENTS_MOTOR_TEMPRATURE_BIT2);
     }
     else osEventFlagsSet(motorEvent01Handle, EVENTS_MOTOR_TEMPRATURE_BIT2);
-    DEBUG_PRINTF(" motor_T=%.2f℃",hsm_dl_sta.real_tmc_temprature);  
+   // DEBUG_PRINTF(" motor_T=%.2f℃",hsm_dl_sta.real_tmc_temprature);  
     app_get_adc_value(AD2_CH4_TEC_TEMPRATURE,&local_disp);    
-    u_s_l980.sta.realtemprature=( short int )(local_disp*10);
+    u_s_l980.sta.realtemprature=(short int )(local_disp*10);
     u_sys_param.sys_config_param.targetTempratureSet=240;
-    DEBUG_PRINTF(" laser_tec_T=%.1f℃ target=%d",u_s_l980.sta.realtemprature*0.1,u_sys_param.sys_config_param.targetTempratureSet);     
+   // DEBUG_PRINTF(" laser_tec_T=%.1f℃ target=%d",u_s_l980.sta.realtemprature*0.1,u_sys_param.sys_config_param.targetTempratureSet);     
     app_get_adc_value(AD3_CH1_ENERGE_FEEDBACK,&local_disp);
-    DEBUG_PRINTF(" energe=%.1f\r\n",local_disp);
-    DEBUG_PRINTF("POSITON:pos=%dμm\r\n",u_s_l980.sta.realPosition);       
-    osDelay(1000); 
-    HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin); 
-    app_tec_auto_manage();
+    u_s_l980.sta.energeFeedback=(unsigned short int)local_disp;
+    if(osSemaphoreAcquire(secondHeartBinarySem04Handle,L980_CAN_MINI_TIME_MS)==osOK)
+    {
+     // DEBUG_PRINTF(" energe=%dmV\r\n",u_s_l980.sta.energeFeedback);
+      //DEBUG_PRINTF("POSITON:pos=%dμm\r\n",u_s_l980.sta.realPosition);  
+      HAL_GPIO_TogglePin(MCU_LED_CTR_OUT_GPIO_Port,MCU_LED_CTR_OUT_Pin);
+      app_tec_auto_manage();
+    }
+    osDelay(L980_CAN_MINI_TIME_MS);     
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -415,29 +428,34 @@ void motorTask02(void *argument)
   unsigned int motor_events;
   for(;;)
   {
-    motor_events = osEventFlagsGet(motorEvent01Handle); 
+    motor_events = osEventFlagsGet(motorEvent01Handle);
+    u_s_l980.sta.realPosition=app_get_motor_real_position(); 
     if((motor_events&EVENTS_MOTOR_ZERO_BIT0)==EVENTS_MOTOR_ZERO_BIT0 )  
     {
-      u_s_l980.sta.realPosition=app_get_motor_real_position();
       if((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1)
       {//idle
-        u_m_sta=osMessageQueueGet(motorPositonQueue01Handle, u_ctr_rx_msg.data, NULL, L980_CAN_MINI_TIME_MS);      
-        if(u_m_sta!=osOK)
-        {   //丢弃过期指令
+        u_m_sta = osMessageQueueGet(motorPositonQueue01Handle, u_ctr_rx_msg.data, NULL, L980_CAN_MINI_TIME_MS);      
+        if(u_m_sta==osOK)
+        {  //丢弃过期指令
           if(u_s_l980.sta.realPosition!=u_ctr_rx_msg.msg.targetPosition)
-          {   
-            DEBUG_PRINTF("motor move to=%dμm \r\n",u_ctr_rx_msg.msg.targetPosition);          
-            if(u_ctr_rx_msg.msg.targetPosition>=L980_MAX_MOTOR_DISTANCE_UM||u_ctr_rx_msg.msg.moveCode==MOTOR_DIR_ZERO)
-            {//find zero          
+          {      
+            if(u_ctr_rx_msg.msg.targetPosition>L980_MAX_MOTOR_DISTANCE_UM||u_ctr_rx_msg.msg.moveCode==MOTOR_DIR_ZERO||u_ctr_rx_msg.msg.targetPosition==0)
+            {//find zero  
+              u_ctr_rx_msg.msg.targetPosition=0;        
+              DEBUG_PRINTF("motor move to zero=%dμm zero\r\n",u_ctr_rx_msg.msg.targetPosition);  
               app_motor_slide_position(MOTOR_DIR_ZERO,L980_MAX_MOTOR_DISTANCE_UM,3);
             }
             else
-            {
+            {             
               if(u_s_l980.sta.realPosition>u_ctr_rx_msg.msg.targetPosition)
               {
+                DEBUG_PRINTF("motor move to=%dμm rever\r\n",u_ctr_rx_msg.msg.targetPosition); 
                 app_motor_slide_position(MOTOR_DIR_REVERSE,u_ctr_rx_msg.msg.targetPosition,3);
               }
-              else app_motor_slide_position(MOTOR_DIR_FORWARD,u_ctr_rx_msg.msg.targetPosition,3);
+              else {
+                DEBUG_PRINTF("motor move to=%dμm forwar\r\n",u_ctr_rx_msg.msg.targetPosition); 
+                app_motor_slide_position(MOTOR_DIR_FORWARD,u_ctr_rx_msg.msg.targetPosition,3);
+              }
             } 
           }
         }
@@ -456,22 +474,24 @@ void motorTask02(void *argument)
     }
     else 
     {
-      u_s_l980.sta.realPosition=L980_MAX_MOTOR_DISTANCE_UM;
       if((motor_events&EVENTS_MOTOR_IDLE_BIT1)==EVENTS_MOTOR_IDLE_BIT1) 
       {
-        GPIO_PinState zero_pin=HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin);
+        GPIO_PinState zero_pin = HAL_GPIO_ReadPin(MOTOR_ZERO_CHECK_EXTI9_5_IN_GPIO_Port,MOTOR_ZERO_CHECK_EXTI9_5_IN_Pin);
         if(zero_pin==GPIO_PIN_RESET)
         { 
           DEBUG_PRINTF(" reverse zero\r\n");
+          u_ctr_rx_msg.msg.targetPosition=0;
+          __HAL_TIM_SET_COUNTER(&htim3,MOTOR_MAX_UM);
           app_motor_slide_position(MOTOR_DIR_ZERO,MOTOR_MAX_UM,3);
         }
         else   
-        {  
+        { 
+          u_ctr_rx_msg.msg.targetPosition=5000; 
           DEBUG_PRINTF("prepare find zero \r\n"); 
           __HAL_TIM_SET_COUNTER(&htim3,1);
           app_motor_slide_position(MOTOR_DIR_FORWARD,5000,3);          
         }
-        m_timeOut=0;
+        m_timeOut = 0;
       }
       else 
       {
@@ -487,14 +507,13 @@ void motorTask02(void *argument)
           {
             app_motor_err_handle(osErrorTimeout);
             break;
-          }
+          }          
         }    
+      }
     }
     osDelay(5);
-  
-  /* USER CODE END motorTask02 */
-    }
   }
+  /* USER CODE END motorTask02 */
 }
 
 /* USER CODE BEGIN Header_CANopenTask03 */
@@ -511,36 +530,47 @@ void CANopenTask03(void *argument)
   uint8_t buff[8];
   uint32_t Identifier;
   uint16_t len;
-  uint32_t l980_heart_timeout=0;
+  uint32_t l980_heart_timeout = 0;
   for(;;)
   {   
     if(FDCAN1_Receive_Msg(buff, &Identifier,&len))
     {  
-      uint8_t packageType = Identifier&0x01;  
-      CAN_receivePackageHandle(buff,packageType);  
-      u_s_l980.sta.staByte|=L980_STA_HEART_BIT0;  //heart
-      l980_heart_timeout=0;  
-      if(u_l980.set_param.auxLedBulbDutySet!=u_sys_param.sys_config_param.auxLedBulbDutySet)  
+      uint8_t packageType = Identifier&0x01; 
+      if((Identifier&0xFE)==CAN_RTU_SLAVE_ID) 
       {
-        u_sys_param.sys_config_param.auxLedBulbDutySet=u_l980.set_param.auxLedBulbDutySet;
-        if(u_sys_param.sys_config_param.auxLedBulbDutySet==0)app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,DISABLE);
-        else app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,ENABLE);
+        CAN_receivePackageHandle(buff,packageType);
+        if( (u_s_l980.sta.staByte&L980_STA_HEART_BIT0)!=L980_STA_HEART_BIT0)
+        {
+          DEBUG_PRINTF("CAN-connect!");
+           u_s_l980.sta.staByte|=L980_STA_HEART_BIT0;  
+        }  
+        l980_heart_timeout=0;  
+        if(u_l980.set_param.auxLedBulbDutySet!=u_sys_param.sys_config_param.auxLedBulbDutySet)  
+        {
+          u_sys_param.sys_config_param.auxLedBulbDutySet=u_l980.set_param.auxLedBulbDutySet;
+          if(u_sys_param.sys_config_param.auxLedBulbDutySet==0)app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,DISABLE);
+          else app_auxiliary_bulb_pwm(u_sys_param.sys_config_param.auxLedBulbDutySet,ENABLE);
+        }
       }
     }
     else
     {
-      l980_heart_timeout++;
+      l980_heart_timeout+=2;
       if(l980_heart_timeout>L980_CAN_FRAME_TIMEOUT)
       {//l980 heart timeout 
         l980_heart_timeout=0; 
         if(u_s_l980.sta.reserveByte==0)
         {
-          u_s_l980.sta.staByte&=(~L980_STA_HEART_BIT0);		
+          if( (u_s_l980.sta.staByte&L980_STA_HEART_BIT0)==L980_STA_HEART_BIT0)
+          {
+            u_s_l980.sta.staByte&=(~L980_STA_HEART_BIT0);		
+            DEBUG_PRINTF("CAN-disconnect!");
+          }         
           if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1) 
           {
             if(laser_ctr_param.pro_hot!=0)
             {
-              DEBUG_PRINTF("CAN-disconnect!exit prohot");
+              DEBUG_PRINTF("exit prohot");
               osSemaphoreRelease(laserCloseBinarySem03Handle);
               laser_ctr_param.pro_hot=0;
             }
@@ -556,7 +586,7 @@ void CANopenTask03(void *argument)
         } 
       }     
     }
-    osDelay(1);
+    osDelay(2);
   }
   /* USER CODE END CANopenTask03 */
 }
@@ -573,6 +603,7 @@ void laserWorkTask04(void *argument)
   /* USER CODE BEGIN laserWorkTask04 */
   /* Infinite loop */
   unsigned int timeout ;
+  U_MOTOR_CTR_MESSAGE u_ctr_tx_msg;
   for(;;)
   {
     uint32_t laser_event = osEventFlagsGet(laserEvent02Handle);    
@@ -582,12 +613,20 @@ void laserWorkTask04(void *argument)
       app_980_pwr_en(DISABLE);      
       app_dac_out(0);
       u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
-      osTimerStop(secondsHeartTimer03Handle);
       osEventFlagsClear(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);  
-      //position
-      unsigned short int targetPosition=MOTOR_MAX_TRIP_STEPS_COUNT;//return 0
-      osMessageQueuePut(motorPositonQueue01Handle, &targetPosition, NULL, L980_MOTOR_MOVE_WAIT_TIMEOUT);    
-      DEBUG_PRINTF("980 motor reverse zero\r\n"); 
+      //position 0
+      u_ctr_tx_msg.msg.moveCode=MOTOR_DIR_ZERO;
+      u_ctr_tx_msg.msg.targetPosition=0;
+      osStatus m_msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_ctr_tx_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
+      if(m_msg_sta!=osOK)            
+      {
+        DEBUG_PRINTF("980 motor ctr msg send fail,resend!\r\n");
+        osDelay(L980_CAN_MINI_TIME_MS);
+        osMessageQueuePut(motorPositonQueue01Handle, u_ctr_tx_msg.data, NULL, 0);
+      }
+      else {
+        DEBUG_PRINTF("980 motor reverse zero cmd\r\n"); 
+      }      
       timeout=0;
       do 
       {
@@ -612,31 +651,24 @@ void laserWorkTask04(void *argument)
         DEBUG_PRINTF("l980 exit prohot fail!\r\n");
       }
     }   
-    if(laser_ctr_param.JT_laser_out!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1)&&(laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)==EVENTS_LASER_OK_ALL_BITS_MASK)
+    if(laser_ctr_param.JT_laser_out!=0&&((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1))
     {
-      if(u_l980.set_param.timerSet<=0)
+      if(u_l980.set_param.timerSet<=0&&(u_s_l980.sta.staByte&L980_STA_TIMERS_BIT3)==L980_STA_TIMERS_BIT3)
       {
         u_s_l980.sta.staByte&=(~L980_STA_TIMERS_BIT3);
         osTimerStop(laserWorkTimer01Handle);
       }
       if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)!=L980_STA_PULSEOUT_BIT2)
       { 
-        if(u_l980.set_param.timerSet>0&&(u_s_l980.sta.staByte&L980_STA_TIMERS_BIT3)!=L980_STA_TIMERS_BIT3)
+        if(u_l980.set_param.timerSet>0)
         {
           u_s_l980.sta.staByte|=L980_STA_TIMERS_BIT3;
           osTimerStart(laserWorkTimer01Handle,abs(u_l980.set_param.timerSet)); 
         }        
         app_980_pwr_en(ENABLE);   
-        u_s_l980.sta.staByte|=L980_STA_PULSEOUT_BIT2;
-        osTimerStart(secondsHeartTimer03Handle,SYS_1_SECOND_TICKS);
+        u_s_l980.sta.staByte|=L980_STA_PULSEOUT_BIT2;       
         DEBUG_PRINTF("l980 JT pulse out \r\n");
-      }  
-      else 
-      {
-        //光电管
-       // DEBUG_PRINTF("energe%d \r\n",u_s_l980.sta.energeFeedback);
-        //1s  
-      }    
+      } 
     }
     else 
     {                         
@@ -645,17 +677,9 @@ void laserWorkTask04(void *argument)
       if((u_s_l980.sta.staByte&L980_STA_PULSEOUT_BIT2)==L980_STA_PULSEOUT_BIT2) 
       {
         DEBUG_PRINTF("l980 JT stop pulse out \r\n");
-        app_980_pwr_en(DISABLE);  
-        osTimerStop(secondsHeartTimer03Handle);
+        app_980_pwr_en(DISABLE); 
         u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
-      } 
-      if((laser_event&EVENTS_LASER_OK_ALL_BITS_MASK)!=EVENTS_LASER_OK_ALL_BITS_MASK)
-      {
-        if((laser_event&EVENTS_LASER_TEMPRATUR_BIT1)==EVENTS_LASER_TEMPRATUR_BIT1)
-        {
-          DEBUG_PRINTF("temprature error! T=%.1f℃ \r\n",u_s_l980.sta.realtemprature*0.1);
-        }
-      } 
+      }       
     }
     osDelay(1);
   }
@@ -683,27 +707,24 @@ void laserProhotTask05(void *argument)
     local_prohot=laser_ctr_param.pro_hot;
     if(local_prohot!=0)
     {  
-      if((u_s_l980.sta.staByte&L980_STA_HEART_BIT0)==L980_STA_HEART_BIT0)
+      if((u_s_l980.sta.staByte&L980_STA_HEART_BIT0)!=L980_STA_HEART_BIT0)
       {
         DEBUG_PRINTF("l980 disconnect! exit prohot!\r\n");        
         app_980_pwr_en(DISABLE); 
         app_dac_out(0); 
         u_s_l980.sta.dacValue=0;
-        u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);
-        if(u_s_l980.sta.realPosition!=0)
+        u_s_l980.sta.staByte&=(~L980_STA_PULSEOUT_BIT2);        
+        u_motor_ctr_msg.msg.moveCode=MOTOR_DIR_ZERO;
+        u_motor_ctr_msg.msg.targetPosition=0;
+        m_msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
+        if(m_msg_sta!=osOK)            
         {
-          u_motor_ctr_msg.msg.moveCode=MOTOR_DIR_ZERO;
-          u_motor_ctr_msg.msg.targetPosition=L980_MAX_MOTOR_DISTANCE_UM;
-          m_msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
-          if(m_msg_sta!=osOK)            
-          {
-            DEBUG_PRINTF("980 motor ctr msg send fail,resend!\r\n");
-            osDelay(L980_CAN_MINI_TIME_MS);
-            osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, 0);
-          }
-          else {
-            DEBUG_PRINTF("980 motor reverse zero cmd\r\n"); 
-          }
+          DEBUG_PRINTF("980 motor ctr msg send fail,resend!\r\n");
+          osDelay(L980_CAN_MINI_TIME_MS);
+          osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, 0);
+        }
+        else {
+          DEBUG_PRINTF("980 motor reverse zero cmd\r\n"); 
         }
         timeout=0;
         do 
@@ -729,25 +750,21 @@ void laserProhotTask05(void *argument)
       {
         if((u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)!=L980_STA_PROHOT_BIT1)
         {
-          if(u_s_l980.sta.realPosition!=u_l980.set_param.positionSet)
+          u_motor_ctr_msg.msg.moveCode=MOTOR_DIR_FORWARD;
+          u_motor_ctr_msg.msg.targetPosition=u_l980.set_param.positionSet;
+          m_msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
+          if(m_msg_sta!=osOK)            
           {
-            
-            u_motor_ctr_msg.msg.moveCode=MOTOR_DIR_ZERO;
-            u_motor_ctr_msg.msg.targetPosition=u_l980.set_param.positionSet;
-            m_msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
-            if(m_msg_sta!=osOK)            
-            {
-              DEBUG_PRINTF("980 motor ctr msg send fail,resend!\r\n");
-              osDelay(L980_CAN_MINI_TIME_MS);              
-              osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, 0);
-            }
-            else {
-              DEBUG_PRINTF("motor move to %dum\r\n",u_motor_ctr_msg.msg.targetPosition);  
-            }   
-            
+            DEBUG_PRINTF("980 motor ctr msg send fail,resend!\r\n");
+            osDelay(L980_CAN_MINI_TIME_MS);              
+            osMessageQueuePut(motorPositonQueue01Handle, u_motor_ctr_msg.data, NULL, 0);
           }
+          else {
+            DEBUG_PRINTF("motor move to %dum\r\n",u_motor_ctr_msg.msg.targetPosition);  
+          }   
           //laser_ctr_param.energe=u_l980.set_param.energeSet+u_l980.set_param.energeCaliSet;
           //position      
+          timeout=0;
           do 
           {
             osDelay(L980_CAN_MINI_TIME_MS);
@@ -763,8 +780,8 @@ void laserProhotTask05(void *argument)
           {
             u_s_l980.sta.staByte&=(~L980_ERR_MOTOR_BIT7);            
             osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_POSITON_BIT0);
-           //unsigned short int dac_voltage = app_laser_980_energe_to_voltage(u_s_l980.sta.useEnerge)+u_sys_param.sys_config_param.e_cali[u_s_l980.sta.useEnerge/5];
-            unsigned short int dac_voltage=450;//测试固定值
+            //unsigned short int dac_voltage = app_laser_980_energe_to_voltage(u_s_l980.sta.useEnerge)+u_sys_param.sys_config_param.e_cali[u_s_l980.sta.useEnerge/5];
+            //unsigned short int dac_voltage=app_laser_980_energe_to_voltage(u_s_l980.sta.useEnerge);//测试固定值
             app_dac_out(u_s_l980.sta.dacValue);            
             osEventFlagsSet(laserEvent02Handle, EVENTS_LASER_VOLTAGE_BIT2);
           }
@@ -873,6 +890,7 @@ void secondsHeartCallback03(void *argument)
     u_sys_param.sys_config_param.laser_use_timeS++;
     u_s_l980.sta.laserUseTimeS=u_sys_param.sys_config_param.laser_use_timeS;
   }  
+  osSemaphoreRelease(secondHeartBinarySem04Handle);
   /* USER CODE END secondsHeartCallback03 */
 }
 
@@ -986,12 +1004,13 @@ void app_tec_ctr_semo(void)
   U_MOTOR_CTR_MESSAGE u_ctr_msg;
   if(targetPosition==0)
   {
-    app_motor_stop_fresh_status();//立即停止                    
+   // app_motor_stop_fresh_status();//立即停止                    
+   DEBUG_PRINTF("motor stop !\r\n");
   }        
   else if(targetPosition>=L980_MAX_MOTOR_DISTANCE_UM)
   {    
     u_ctr_msg.msg.moveCode=MOTOR_DIR_ZERO;
-    u_ctr_msg.msg.targetPosition=L980_MAX_MOTOR_DISTANCE_UM;
+    u_ctr_msg.msg.targetPosition=0;
     msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
     if(msg_sta!=osOK)            
     {
@@ -1005,7 +1024,7 @@ void app_tec_ctr_semo(void)
   }
   else
   {
-    u_ctr_msg.msg.moveCode=MOTOR_DIR_ZERO;
+    u_ctr_msg.msg.moveCode=MOTOR_DIR_FORWARD;
     u_ctr_msg.msg.targetPosition=targetPosition;
     msg_sta= osMessageQueuePut(motorPositonQueue01Handle, u_ctr_msg.data, NULL, L980_CAN_MINI_TIME_MS);          
     if(msg_sta!=osOK)            
@@ -1022,48 +1041,70 @@ void app_tec_ctr_semo(void)
 /************************************************************************//**
 * @brief  app_tec_auto_manage
 * @param  
-* @note    
+* @note    1s handle
          volta,tec Voltage(max 24V)
 * @retval None
 ****************************************************************************/
 void app_tec_auto_manage(void)
 {
-  int volta;   
-  if(u_s_l980.sta.realtemprature<-400||u_s_l980.sta.realtemprature>1500)
+  int volta;     
+  if(u_s_l980.sta.realtemprature>-400&&u_s_l980.sta.realtemprature>1500&&HAL_GPIO_ReadPin(TEC_DRV8701_ERROR_IN_GPIO_Port,TEC_DRV8701_ERROR_IN_Pin)==GPIO_PIN_SET)
   {//error
     osEventFlagsSet(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
   }
   else 
   {
-    if(HAL_GPIO_ReadPin(TEC_DRV8701_ERROR_IN_GPIO_Port,TEC_DRV8701_ERROR_IN_Pin)==GPIO_PIN_SET)
-    {
-      osEventFlagsSet(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
-    }
-    else  osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
+    osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_ERR_BIT1);
   }
-  uint32_t tec_evnet = osEventFlagsGet(tecEvent04Handle);  
-  if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+8)//>0.8
+  uint32_t tec_evnet = osEventFlagsGet(tecEvent04Handle);
+  if((tec_evnet&EVENTS_TEC_ERR_BIT1)==EVENTS_TEC_ERR_BIT1)
   {
-    volta = -20;
-    if(tec_evnet==EVENTS_TEC_OK_ALL_BITS_MASK)
-    {
-      osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
-      osTimerStart(tecRunTimer02Handle,500);  
-      if( u_s_l980.sta.tec_switch !=0)  tec_start(volta,200);
-    } 
-    else DEBUG_PRINTF("the tec is running\r\n");        
+    DEBUG_PRINTF("TEC error! check it\r\n");
+    if(tec_evnet&EVENTS_TEC_STA_IDLE_BIT0) tec_stop(); 
   }
-  else if(u_s_l980.sta.realtemprature+1<u_sys_param.sys_config_param.targetTempratureSet)//<-0.1
-  {  
-    volta = 20;    
-    if(tec_evnet==EVENTS_TEC_OK_ALL_BITS_MASK)
+  else 
+  {
+    if(tec_evnet&EVENTS_TEC_STA_IDLE_BIT0)
     {
-      osTimerStart(tecRunTimer02Handle,500);
-      osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
-      if( u_s_l980.sta.tec_switch !=0)  tec_start(volta,500);
-    } 
-    else DEBUG_PRINTF("the tec is running\r\n");   
-  }  
+      if( u_s_l980.sta.tec_switch !=0)
+      {
+        if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+2)//>0.2
+        {
+          if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+15)//>1.5
+          {
+            volta = -40;
+            osTimerStart(tecRunTimer02Handle,600);  //60%
+          }
+          else{ 
+            volta = -20;
+            osTimerStart(tecRunTimer02Handle,400);  //40%
+          }
+          osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);          
+          tec_start(volta,500);
+        }
+        else if(u_s_l980.sta.realtemprature+2<u_sys_param.sys_config_param.targetTempratureSet)//<-0.2
+        {  
+          if(u_s_l980.sta.realtemprature+15<u_sys_param.sys_config_param.targetTempratureSet)//<1.5
+          {
+            volta = 40;
+            osTimerStart(tecRunTimer02Handle,600);  //60%
+          }
+          else{ 
+            volta = 20; 
+            osTimerStart(tecRunTimer02Handle,400);  //40%
+          }        
+          osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
+          tec_start(volta,500);
+        }        
+      } 
+    }
+    else{
+      if( u_s_l980.sta.tec_switch ==0)
+      {
+          tec_stop();
+      }
+    }
+  } 
   if(u_s_l980.sta.realtemprature>300||u_s_l980.sta.realtemprature<160)
   {//温度超限
     u_s_l980.sta.staByte|=L980_ERR_TEMPRATURE_BIT4;

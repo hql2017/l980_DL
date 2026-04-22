@@ -217,6 +217,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM4) {         
     app_motor_stop_fresh_status();
+    HAL_TIM_Base_Stop_IT(&htim4); 
     DEBUG_PRINTF("steps overflow\r\n "); 
   } 
   /* USER CODE END Callback 1 */

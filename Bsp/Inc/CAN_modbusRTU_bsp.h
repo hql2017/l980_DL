@@ -13,7 +13,7 @@
 #define L980_MAX_MOTOR_DISTANCE_UM    35000  //32mm,最远运动距离
 #define L980_MAX_PROHOT_WAIT_TIME  20*SYS_1_SECOND_TICKS//20s、
 #define L980_MOTOR_MOVE_WAIT_TIMEOUT    10*SYS_1_SECOND_TICKS//10s
-#define L980_CAN_FRAME_TIMEOUT  300
+#define L980_CAN_FRAME_TIMEOUT  500
 #define L980_CAN_MINI_TIME_MS  50//安全包间隔
 #define L980_CODE_MASK  0x80
 #define L980_REG_WRITE_MASK  0x80// write:bit7=1 ;read:bit7=0。
@@ -43,7 +43,7 @@ typedef enum {
 	REG_AUX_REG,                    //r/w其他数据
 }L980_cmd;
 
-#define L980_STA_HEART_BIT0     0x01//1，ok;0 失败;
+#define L980_STA_HEART_BIT0     0x01//1，ok;0 失联;
 #define L980_STATUS_BYTE_MASK   0x0E//状态掩码(bit 1~3)
 #define L980_STA_PROHOT_BIT1    0x02//0x01<<1//1，ok;0 准备失败。
 #define L980_STA_PULSEOUT_BIT2  0x04//0x01<<2//1，输出ok;

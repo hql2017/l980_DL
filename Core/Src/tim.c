@@ -634,7 +634,7 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
 /************************************************************************//**
 * @brief 激光指示灯PWM
   * @param 
-  * @note  推介频率2k GREEN 40<duty>60 : freq=50k  RED 35<duty>100 
+  * @note  推介频率2k GREEN 40<duty>60 : RED 8<duty>30
   * @retval  
   *****************************************************************************/
  void app_auxiliary_bulb_pwm(unsigned char duty,FunctionalState flag)
@@ -644,13 +644,13 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
   { 
 		unsigned int timeUs;
 		unsigned short int period;
-		//check freq,timer8 1M clock freq
-    //freq=50000; // 20us period	
-		//period=(1000000/freq);
-    period=500;//
-		//__HAL_TIM_SetAutoreload(&htim8,period-1);// 50kHz  
+		//check freq,timer1 10M clock freq
+    //freq=2000;	
+		//period=(10000000/freq);
+    period=5000;//
+		//__HAL_TIM_SetAutoreload(&htim8,period-1);//low 10K  50kHz  MAX 400kHz
 		//duty 1%  100%; 0% close
-    if(duty>80) duty_t=80;//max
+    if(duty>100) duty_t=80;//max
     else  duty_t=40+duty*2/5;
 		timeUs= period * duty_t/100;
 		__HAL_TIM_SetCompare(&htim8,TIM_CHANNEL_2,timeUs-1);

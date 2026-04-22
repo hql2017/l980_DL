@@ -184,8 +184,22 @@ extern void app_motor_run_sta(unsigned char runFlag);
 		unsigned short int period;
 		//check freq,timer8 1M clock freq		
     //period=1000000/50000;
-    #if 0
-    //安静速度 10K~5.5k
+    #if 1
+    //fast
+    if(speed==3)//high speed  //10k
+    {
+      period = 80;
+    }
+    else if(speed==2)//mid speed 8k
+    {
+      period = 125;
+    }
+    else //if(speed==1)//5.5k
+    {
+      period=180;
+    } 
+    #else 
+    //静音
     if(speed==3)//high speed  //10k
     {
       //period = 100;
@@ -199,20 +213,6 @@ extern void app_motor_run_sta(unsigned char runFlag);
     {
       period=180;
     } 
-    #else
-    //high speed 12K~5.5k
-       if(speed==3)//high speed  //10k
-      {     
-        period = 80;
-      }
-      else if(speed==2)//mid speed 8k
-      {
-        period = 125;
-      }
-      else //if(speed==1)//5.5k
-      {
-        period=180;
-      } 
     #endif
 		__HAL_TIM_SetAutoreload(&htim8,period-1);//freq =10k
 		//duty 1%  100%; 0% close	
@@ -282,8 +282,10 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     tmc2226_step_pwm_set(tmc2226_rdb_info.rdb_speed);     
     if(steps < MOTOR_MAX_TRIP_STEPS_COUNT+1) 
     {  
-      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+__HAL_TIM_GET_COUNTER(&htim4)+1);         
-      else __HAL_TIM_SetAutoreload(&htim4,steps+__HAL_TIM_GET_COUNTER(&htim4)+1);   //0.002mm   
+      __HAL_TIM_SET_COUNTER(&htim4,0);
+      //__HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT);
+      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+ __HAL_TIM_GET_COUNTER(&htim4));         
+      else __HAL_TIM_SetAutoreload(&htim4,steps+1+ __HAL_TIM_GET_COUNTER(&htim4));   //0.002mm   
       HAL_TIM_Base_Start_IT(&htim4);             
     }
     else HAL_TIM_Base_Stop_IT(&htim4); //until
