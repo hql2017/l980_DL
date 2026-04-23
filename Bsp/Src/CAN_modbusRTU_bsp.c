@@ -58,8 +58,8 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
  {
     unsigned char sendBuff[64],packNum,packLen; 
     packLen=dataLen+4;   
-    if(dataLen>64)  return ;   
-    sendBuff[0]=reg|L980_REG_WRITE_MASK; 
+    if(dataLen>64||reg>REG_AUX_REG)  return ;   
+    sendBuff[0]=reg; 
     sendBuff[1]=dataLen;
     if(dataLen>0) memcpy(&sendBuff[2],data,dataLen);
     sendBuff[dataLen+2]=(CAN_crc16Num(sendBuff,dataLen+2)>>8)&0xFF;
@@ -177,7 +177,7 @@ static unsigned short int CAN_crc16Num(unsigned char *pData, int length)
         case L980_REG_TEC_CTR:          
          // transmitBuff[0]= u_s_l980.sta.tec_switch&0xFF;
          // transmitBuff[1]=( u_s_l980.sta.tec_switch>>8)&0xFF;
-          CAN_r_w_ack(reg|L980_REG_WRITE_MASK,2, (unsigned char *)&u_s_l980.sta.tec_switch);
+          CAN_r_w_ack(reg,2, (unsigned char *)&u_s_l980.sta.tec_switch);
     break;       
       default:
         break;
