@@ -511,7 +511,7 @@ void app_start_multi_channel_adc(void)
   #if 1
   //调采集频率() timeMs=count*0.01ms
   __HAL_TIM_SetAutoreload(&htim1,2999);//30ms
-  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,1499);//30ms
+  __HAL_TIM_SetCompare(&htim1,TIM_CHANNEL_1,1499);//15ms
   #endif
   HAL_TIM_Base_Start(&htim1);//trigger
   HAL_ADC_Start_DMA(&hadc1,(unsigned int*)ad1Buff,MAX_AD1_BUFF_LENGTH);  
@@ -559,7 +559,7 @@ void filter_ad(ADC_HandleTypeDef  *hadc)
   {
     for( i=0;i<MAX_AD3_BUFF_LENGTH;i++)
     {   
-      sum[0]+=ad2Buff[i];
+      sum[0]+=ad3Buff[i];
     } 
     advalue[6]=(unsigned short int)(sum[0]>>4);  
   }   

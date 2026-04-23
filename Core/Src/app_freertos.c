@@ -947,7 +947,7 @@ void app_tec_ctr_semo(void)
  unsigned short int  app_laser_980_energe_to_voltage(unsigned short int energe)
  {
    unsigned short int ret_vol; 
-   ret_vol=energe*4.5+300;   
+   ret_vol=energe*6+300;   
    if(ret_vol<LASER_980_MIN_ENERGE_MV) ret_vol=LASER_980_MIN_ENERGE_MV;
    if(ret_vol>LASER_980_MAX_ENERGE_MV) ret_vol=LASER_980_MAX_ENERGE_MV;
    return ret_vol;
@@ -1064,46 +1064,37 @@ void app_tec_auto_manage(void)
   }
   else 
   {
-    if(tec_evnet&EVENTS_TEC_STA_IDLE_BIT0)
+    if(tec_evnet&EVENTS_TEC_STA_IDLE_BIT0&&(u_s_l980.sta.staByte&L980_STA_PROHOT_BIT1)==L980_STA_PROHOT_BIT1&&u_s_l980.sta.tec_switch !=0)
     {
-      if( u_s_l980.sta.tec_switch !=0)
-      {
-        if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+2)//>0.2
-        {
-          if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+15)//>1.5
-          {
-            volta = -40;
-            osTimerStart(tecRunTimer02Handle,600);  //60%
-          }
-          else{ 
-            volta = -20;
-            osTimerStart(tecRunTimer02Handle,400);  //40%
-          }
-          osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);          
-          tec_start(volta,500);
-        }
-        else if(u_s_l980.sta.realtemprature+2<u_sys_param.sys_config_param.targetTempratureSet)//<-0.2
-        {  
-          if(u_s_l980.sta.realtemprature+15<u_sys_param.sys_config_param.targetTempratureSet)//<1.5
-          {
-            volta = 40;
-            osTimerStart(tecRunTimer02Handle,600);  //60%
-          }
-          else{ 
-            volta = 20; 
-            osTimerStart(tecRunTimer02Handle,400);  //40%
-          }        
-          osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
-          tec_start(volta,500);
-        }        
-      } 
-    }
-    else{
-      if( u_s_l980.sta.tec_switch ==0)
-      {
-          tec_stop();
-      }
-    }
+			if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+2)//>0.2
+			{
+				if(u_s_l980.sta.realtemprature>u_sys_param.sys_config_param.targetTempratureSet+15)//>1.5
+				{
+					volta = -40;
+					osTimerStart(tecRunTimer02Handle,600);  //60%
+				}
+				else{ 
+					volta = -20;
+					osTimerStart(tecRunTimer02Handle,400);  //40%
+				}
+				osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);          
+				tec_start(volta,500);
+			}
+			else if(u_s_l980.sta.realtemprature+2<u_sys_param.sys_config_param.targetTempratureSet)//<-0.2
+			{  
+				if(u_s_l980.sta.realtemprature+15<u_sys_param.sys_config_param.targetTempratureSet)//<1.5
+				{
+					volta = 40;
+					osTimerStart(tecRunTimer02Handle,600);  //60%
+				}
+				else{ 
+					volta = 20; 
+					osTimerStart(tecRunTimer02Handle,400);  //40%
+				}        
+				osEventFlagsClear(tecEvent04Handle,EVENTS_TEC_STA_IDLE_BIT0);
+				tec_start(volta,500);
+			}  
+    }    
   } 
   if(u_s_l980.sta.realtemprature>300||u_s_l980.sta.realtemprature<160)
   {//温度超限

@@ -284,8 +284,8 @@ void tmc2226_start(unsigned char dir,unsigned short int spdLevel,unsigned  int s
     {  
       __HAL_TIM_SET_COUNTER(&htim4,0);
       //__HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT);
-      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT+ __HAL_TIM_GET_COUNTER(&htim4));         
-      else __HAL_TIM_SetAutoreload(&htim4,steps+1+ __HAL_TIM_GET_COUNTER(&htim4));   //0.002mm   
+      if(dir==MOTOR_DIR_ZERO)  __HAL_TIM_SetAutoreload(&htim4,MOTOR_MAX_TRIP_STEPS_COUNT);         
+      else __HAL_TIM_SetAutoreload(&htim4,steps+1);   //0.002mm   
       HAL_TIM_Base_Start_IT(&htim4);             
     }
     else HAL_TIM_Base_Stop_IT(&htim4); //until

@@ -183,11 +183,11 @@ extern void app_motor_stop_fresh_status(void);
 #define MAX_PROHOT_WAIT_TIME_S   15*SYS_1_SECOND_TICKS
 
 #define LASER_980_MIN_ENERGE_MV   120//120mV
-#define LASER_980_MAX_ENERGE_MV   1200//1200mV
+#define LASER_980_MAX_ENERGE_MV   1500//1500mV
 
 #define MOTOR_TMC_PROTECT_TEMPRATUR   80.0//电机保护温度
 
-#ifndef DEBUG_MSG_UART 
+#ifdef DEBUG_MSG_UART 
 #define DEBUG_MSG_UART  /*use printf*/
 #define DEBUG_PRINTF(fmt, ...) printf(fmt, ##__VA_ARGS__)
 #else
